@@ -83,6 +83,14 @@ pub type ValidatorInternalNetworkConfig = ValidatorInternalNetworkPreConfig<Netw
 /// The public network configuration for a validator.
 pub type ValidatorPublicNetworkConfig = ValidatorPublicNetworkPreConfig<NetworkProtocol>;
 
+enum ShardManagerConfig {
+    /// Static shard assignmemt
+    Static,
+
+    /// Redis-based distribusted locks
+    // Redis { redis_host: String, redis_port: u32, metric_service_host: String, metric_service_port: u32 }
+}
+
 /// The network configuration for all shards.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidatorInternalNetworkPreConfig<P> {
@@ -91,6 +99,8 @@ pub struct ValidatorInternalNetworkPreConfig<P> {
     /// The available shards. Each chain UID is mapped to a unique shard in the vector in
     /// a static way.
     pub shards: Vec<ShardConfig>,
+    /// Configuration for the shard manager.
+    pub shard_manager_config: ShardManagerConfig,
     /// The host name of the proxy on the internal network (IP or hostname).
     pub host: String,
     /// The port the proxy listens on on the internal network.
@@ -194,14 +204,6 @@ impl std::str::FromStr for NetworkProtocol {
 }
 
 impl<P> ValidatorInternalNetworkPreConfig<P> {
-    /// Static shard assignment
-    pub fn get_shard_id(&self, chain_id: ChainId) -> ShardId {
-        use std::hash::{Hash, Hasher};
-        let mut s = std::collections::hash_map::DefaultHasher::new();
-        chain_id.hash(&mut s);
-        (s.finish() as ShardId) % self.shards.len()
-    }
-
     pub fn shard(&self, shard_id: ShardId) -> &ShardConfig {
         &self.shards[shard_id]
     }
@@ -210,4 +212,55 @@ impl<P> ValidatorInternalNetworkPreConfig<P> {
     pub fn get_shard_for(&self, chain_id: ChainId) -> &ShardConfig {
         self.shard(self.get_shard_id(chain_id))
     }
+
+    pub async fn connect_to_shard_manager(&self) -> Result<Box<dyn ShardManager>> {
+        todo!();
+    }
 }
+
+#[async_trait]
+pub trait ShardManager {
+    /// The error type.
+    type Error: Error;
+
+    /// Returns the existing shard_id for the given chain, if any.
+    ///
+    /// This is used by chain clients that need to find the shard to query: including proxies and
+    /// other shards.
+    async fn get_shard_id(&mut self, config: &ValidatorInternalNetworkPreConfig, chain_id: ChainId) -> Result<Option<ShardId>, Self::Error>;
+
+    /// Suggests a new shard_id without trying to lock it. Because the suggestion is not
+    /// locked, the client must then send a query to the worker asking it to take the
+    /// lock.
+    ///
+    /// HACK: use a chain_info_query and retry until it works: each error message should indicate which shard actually holds the lock (see acquire_global_lock_for_chain_id).
+    ///
+    /// This is used by chain clients that need to find the shard to query: including
+    /// proxies and other shards.
+    ///
+    /// TODO: even after the lock expired, suggestions may be "sticky" and try to stay with the same
+    /// worker as last time (local DB cache, etc).
+    async fn suggest_shard_id(&mut self, config: &ValidatorInternalNetworkPreConfig, chain_id: ChainId) -> Result<ShardId, Self::Error>;
+
+    /// Tries to acquire or extend the global lock on `chain_id` for `ttl` duration. If
+    /// the lock is taken, returns the current owner.
+    ///
+    /// This is used by workers that want to acquire the lock after receiving a request.
+    /// If lock is taken, the RPC error returned by a server should contain the actual
+    /// owner of the lock as a hint.
+    async fn acquire_global_lock_for_chain_id(&mut self, config: &ValidatorInternalNetworkPreConfig, chain_id: ChainId, my_shard_id: ShardId, ttl: Duration) -> Result<Option<ShardId>, Self::Error>;
+
+    /// Releases the global lock.
+    ///
+    /// This is used by workers which are about to exit.
+    async fn release_global_lock_for_chain_id(&mut self, config: &ValidatorInternalNetworkPreConfig, chain_id: ChainId, /* for verification? */ my_shard_id: ShardId) -> Result<(), Self::Error>;
+}
+
+pub struct StaticShardManager;
+
+// impl ShardManager for StaticShardManager {
+//     type Error = !;
+
+// }
+
+// pub struct RedisShardManager { ... }
