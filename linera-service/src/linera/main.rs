@@ -437,16 +437,17 @@ impl Runnable for Job {
                 );
                 let node_provider = context.make_node_provider();
                 for (name, state) in committee.validators() {
-                    let node = node_provider.make_node(&state.network_address)?;
+                    let address = &state.network_address;
+                    let node = node_provider.make_node(address)?;
                     match node.get_version_info().await {
                         Ok(version_info) => {
                             info!(
-                                "Version information for validator {name:?}:{}",
+                                "Version information for validator {name:?} at {address}:{}",
                                 version_info
                             );
                         }
                         Err(e) => {
-                            warn!("Failed to get version information for validator {name:?}:\n{e}");
+                            warn!("Failed to get version information for validator {name:?} at {address}:\n{e}");
                             continue;
                         }
                     }
@@ -454,13 +455,13 @@ impl Runnable for Job {
                     match node.handle_chain_info_query(query).await {
                         Ok(response) => {
                             info!(
-                                "Validator {name:?} sees chain {chain_id} at block height {} and epoch {:?}",
+                                "Validator {name:?} at {address} sees chain {chain_id} at block height {} and epoch {:?}",
                                 response.info.next_block_height,
                                 response.info.epoch,
                             );
                         }
                         Err(e) => {
-                            warn!("Failed to get chain info for validator {name:?} and chain {chain_id}:\n{e}");
+                            warn!("Failed to get chain info for validator {name:?} at {address} and chain {chain_id}:\n{e}");
                             continue;
                         }
                     }
@@ -494,7 +495,7 @@ impl Runnable for Job {
                             linera_version::VERSION_INFO
                         ),
                         Err(error) => bail!(
-                            "Failed to get version information for validator {name:?}:\n{error}"
+                            "Failed to get version information for validator {name:?} at {address}:\n{error}"
                         ),
                     }
                     let genesis_config_hash = context.wallet().genesis_config().hash();
@@ -506,7 +507,7 @@ impl Runnable for Job {
                             genesis_config_hash
                         ),
                         Err(error) => bail!(
-                            "Failed to get genesis config hash for validator {name:?}:\n{error}"
+                            "Failed to get genesis config hash for validator {name:?} at {address}:\n{error}"
                         ),
                     }
                 }
