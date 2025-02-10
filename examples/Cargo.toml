@@ -16,6 +16,8 @@ members = [
     "non-fungible",
     "rfq",
     "social",
+
+    "concurrent-lurk",
     "lurk-microchain",
 ]
 

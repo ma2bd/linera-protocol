@@ -17,7 +17,8 @@ use custom_debug_derive::Debug;
 use linera_base::{
     crypto::CryptoHash,
     data_types::{
-        Amount, ApplicationPermissions, Blob, BlobContent, BlockHeight, LurkMicrochainData, OracleResponse, Timestamp
+        Amount, ApplicationPermissions, Blob, BlobContent, BlockHeight, LurkMicrochainData,
+        OracleResponse, PostprocessData, PreprocessData, Timestamp,
     },
     ensure, hex_debug,
     identifiers::{
@@ -43,6 +44,8 @@ use lurk::{
         eval_direct::build_lurk_toplevel,
         lang::Lang,
         stark_machine::new_machine,
+        symbol::Symbol,
+        tag::Tag,
         zstore::{ZStore, ZStoreView},
     },
     lair::lair_chip::LairMachineProgram,
@@ -1007,15 +1010,8 @@ where
             next_callable,
         } = chain_proof;
 
-        let call_args_zptr = {
-            if call_args.is_flawed(&mut zstore) {
-                return Err(ExecutionError::FlawedData(format!(
-                    "call_args ({:?})",
-                    call_args.zptr.digest
-                )));
-            }
-            call_args.zptr
-        };
+        // TODO: check this
+        let call_args_zptr = call_args.populate_zstore(&mut zstore);
 
         let next_chain_result_zptr = {
             if next_chain_result.is_flawed(&mut zstore) {
@@ -1067,9 +1063,7 @@ where
         let challenger = &mut machine.config().challenger();
         if machine.verify(&vk, &machine_proof, challenger).is_err() {
             let verifier_version = get_verifier_version().to_string();
-            return Err(ExecutionError::ProofVerificationFailed(
-                verifier_version,
-            ));
+            return Err(ExecutionError::ProofVerificationFailed(verifier_version));
         }
 
         // everything went okay... transition to the next state
@@ -1114,6 +1108,110 @@ where
             zstore_view,
         };
         Ok(data)
+    }
+
+    pub async fn preprocess_microchain_transition(
+        &mut self,
+        chain_proof_id: BlobId,
+        data: LurkMicrochainData,
+    ) -> Result<PreprocessData, ExecutionError> {
+        let LurkMicrochainData {
+            chain_state,
+            zstore_view,
+            ..
+        } = data;
+        let chain_proof_bytes = self.read_blob_content(chain_proof_id).await?.into_bytes();
+        let chain_proof: ChainProof = bincode::deserialize_from(&chain_proof_bytes[..])
+            .map_err(|_| ExecutionError::DeserializationFailed("chain_proof".into()))?;
+        let chain_state: ChainState = bincode::deserialize_from(&chain_state[..])
+            .map_err(|_| ExecutionError::DeserializationFailed("chain_state".into()))?;
+        let zstore_view: ZStoreView<BabyBear> = bincode::deserialize_from(&zstore_view[..])
+            .map_err(|_| ExecutionError::DeserializationFailed("zstore_view".into()))?;
+        let mut zstore = ZStore::from_view(zstore_view, lurk_hasher());
+
+        let ChainProof { call_args, .. } = chain_proof;
+        let call_args = call_args.populate_zstore(&mut zstore);
+
+        let chain_state = chain_state.into_zptr(&mut zstore);
+        let (chain_result, _) = zstore.car_cdr(&chain_state);
+        if chain_result.tag != Tag::Cons {
+            return Ok(PreprocessData::None);
+        }
+
+        let (&control, _) = zstore.car_cdr(chain_result);
+        let spawn = zstore.intern_symbol_no_lang(&Symbol::key(&["spawn"]));
+        let send = zstore.intern_symbol_no_lang(&Symbol::key(&["send"]));
+        let receive = zstore.intern_symbol_no_lang(&Symbol::key(&["receive"]));
+
+        if control == spawn {
+            let [quoted_pid] = zstore
+                .take(&call_args)
+                .map_err(|_| ExecutionError::LurkError(":spawn expects exactly one arg".into()))?;
+            let [_, pid] = zstore.take(quoted_pid).unwrap();
+            let pid: String = zstore.fetch_string(pid);
+            let pid: ChainId = serde_json::from_str(&format!("\"{}\"", pid)).unwrap();
+            Ok(PreprocessData::Spawn { pid })
+        } else if control == send {
+            Ok(PreprocessData::Send)
+        } else if control == receive {
+            let [quoted_message] = zstore.take(&call_args).map_err(|_| {
+                ExecutionError::LurkError(":receive expects exactly one arg".into())
+            })?;
+            let [_, message] = zstore.take(quoted_message).unwrap();
+            let message = bincode::serialize(message)
+                .map_err(|_| ExecutionError::SerializationFailed("message".into()))?;
+            Ok(PreprocessData::Receive { message })
+        } else {
+            Err(ExecutionError::LurkError(
+                "Not a valid control message".into(),
+            ))
+        }
+    }
+
+    pub async fn postprocess_microchain_transition(
+        &mut self,
+        data: LurkMicrochainData,
+    ) -> Result<PostprocessData, ExecutionError> {
+        let LurkMicrochainData {
+            chain_state,
+            zstore_view,
+            ..
+        } = data;
+        let chain_state: ChainState = bincode::deserialize_from(&chain_state[..])
+            .map_err(|_| ExecutionError::DeserializationFailed("chain_state".into()))?;
+        let zstore_view: ZStoreView<BabyBear> = bincode::deserialize_from(&zstore_view[..])
+            .map_err(|_| ExecutionError::DeserializationFailed("zstore_view".into()))?;
+        let mut zstore = ZStore::from_view(zstore_view, lurk_hasher());
+
+        let chain_state = chain_state.into_zptr(&mut zstore);
+        let (chain_result, _) = zstore.car_cdr(&chain_state);
+        if chain_result.tag != Tag::Cons {
+            return Ok(PostprocessData::None);
+        }
+
+        let (&control, &rest) = zstore.car_cdr(chain_result);
+        let spawn = zstore.intern_symbol_no_lang(&Symbol::key(&["spawn"]));
+        let send = zstore.intern_symbol_no_lang(&Symbol::key(&["send"]));
+        let receive = zstore.intern_symbol_no_lang(&Symbol::key(&["receive"]));
+
+        if control == spawn {
+            Ok(PostprocessData::Spawn)
+        } else if control == send {
+            let [other_pid, message] = zstore
+                .take(&rest)
+                .map_err(|_| ExecutionError::LurkError(":send expects exactly two args".into()))?;
+            let other_pid: ChainId =
+                serde_json::from_str(&format!("\"{}\"", zstore.fetch_string(other_pid))).unwrap();
+            let message = bincode::serialize(message)
+                .map_err(|_| ExecutionError::SerializationFailed("message".into()))?;
+            Ok(PostprocessData::Send { other_pid, message })
+        } else if control == receive {
+            Ok(PostprocessData::Receive)
+        } else {
+            Err(ExecutionError::LurkError(
+                "Not a valid control message".into(),
+            ))
+        }
     }
 
     async fn check_bytecode_blobs(

@@ -1,0 +1,36 @@
+!(set-env (letrec 
+            ((pong (lambda (pid) 
+                     (cons '(:receive) 
+                            (lambda (msg) 
+                              (if (eq (car msg) :ping) 
+                                  (begin (emit (list "got ping" msg)) (cons (list :send (car (cdr msg)) (list :pong pid)) (lambda nil (pong pid)))) 
+                                  (pong pid)))))) 
+             (ping (lambda (pid) 
+                     (cons '(:spawn pong) 
+                            (lambda (other-pid) 
+                              (cons (list :send other-pid (list :ping pid)) 
+                                    (lambda nil 
+                                      (cons '(:receive) 
+                                             (lambda (msg) (begin (if (eq (car msg) :pong) (emit (list "got pong" msg))) (cons nil nil))))))))))) 
+            (current-env)))
+
+; !(defq app-id !(linera-start ping-chain-id contract service))
+
+; !(def ping-chain-id "b7a85e90acb4badf7d04a239b2b6721bac885c3422cf3b93861695f1a5a33d9e")
+; !(def ping1 (ping ping-chain-id))
+; !(microchain-start port ping-chain-id app-id owner ping1)
+; !(microchain-get-state port ping-chain-id app-id)
+
+; !(def pong-chainid "b7a85e90acb4badf7d04a239b2b6721bac885c3422cf3b93861695f1a5a33d9e")
+; !(def pong1 (pong pong-chain-id))
+
+; !(microchain-start port pong-chain-id app-id owner pong1)
+; !(microchain-get-state port pong-chain-id app-id)
+
+; !(defq ping2 !(microchain-transition port ping-chain-id app-id ping1 pong-chain-id))
+; !(microchain-get-state port ping-chain-id app-id)
+
+; !(defq pong2 !(microchain-transition port pong-chain-id app-id pong1 (car (cdr (cdr (car ping2))))))
+; !(defq ping3 !(microchain-transition port ping-chain-id app-id ping2))
+; !(defq ping4 !(microchain-transition port ping-chain-id app-id ping3 (car (cdr (cdr (car pong2))))))
+; !(defq pong3 !(microchain-transition port pong-chain-id app-id pong2))

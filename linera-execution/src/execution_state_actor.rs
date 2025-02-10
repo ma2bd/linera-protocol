@@ -15,7 +15,10 @@ use linera_base::prometheus_util::{
     exponential_bucket_latencies, register_histogram_vec, MeasureLatency as _,
 };
 use linera_base::{
-    data_types::{Amount, ApplicationPermissions, BlobContent, BlockHeight, LurkMicrochainData, Timestamp},
+    data_types::{
+        Amount, ApplicationPermissions, BlobContent, BlockHeight, LurkMicrochainData,
+        PostprocessData, PreprocessData, Timestamp,
+    },
     ensure, hex_debug, hex_vec_debug, http,
     identifiers::{Account, AccountOwner, BlobId, BlobType, ChainId, MessageId},
     ownership::ChainOwnership,
@@ -437,7 +440,7 @@ where
                 let app_permissions = self.system.application_permissions.get();
                 callback.respond(app_permissions.clone());
             }
-            
+
             MicrochainStart {
                 chain_state,
                 callback,
@@ -452,6 +455,20 @@ where
                     .microchain_transition(chain_proof_id, data)
                     .await?,
             ),
+
+            PreprocessMicrochainTransition {
+                chain_proof_id,
+                data,
+                callback,
+            } => callback.respond(
+                self.system
+                    .preprocess_microchain_transition(chain_proof_id, data)
+                    .await?,
+            ),
+
+            PostprocessMicrochainTransition { data, callback } => {
+                callback.respond(self.system.postprocess_microchain_transition(data).await?)
+            }
         }
 
         Ok(())
@@ -708,7 +725,7 @@ pub enum ExecutionRequest {
         #[debug(skip)]
         callback: Sender<ApplicationPermissions>,
     },
-    
+
     MicrochainStart {
         chain_state: Vec<u8>,
         #[debug(skip)]
@@ -720,5 +737,18 @@ pub enum ExecutionRequest {
         data: LurkMicrochainData,
         #[debug(skip)]
         callback: Sender<LurkMicrochainData>,
+    },
+
+    PreprocessMicrochainTransition {
+        chain_proof_id: BlobId,
+        data: LurkMicrochainData,
+        #[debug(skip)]
+        callback: Sender<PreprocessData>,
+    },
+
+    PostprocessMicrochainTransition {
+        data: LurkMicrochainData,
+        #[debug(skip)]
+        callback: Sender<PostprocessData>,
     },
 }

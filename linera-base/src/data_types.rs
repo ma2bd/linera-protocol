@@ -1209,7 +1209,9 @@ impl Event {
     }
 }
 
-/// An event recorded in an executed block.
+impl<'de> BcsHashable<'de> for Event {}
+
+/// Lurk microchain data.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize, WitType, WitStore, WitLoad)]
 pub struct LurkMicrochainData {
     /// The current chain proofs.
@@ -1226,23 +1228,41 @@ pub struct LurkMicrochainData {
     pub zstore_view: Vec<u8>,
 }
 
-impl<'de> BcsHashable<'de> for Event {}
-
-/// An event recorded in an executed block.
+/// Lurk control data.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize, WitType, WitStore, WitLoad)]
-pub struct LurkMicrochainData {
-    /// The current chain proofs.
-    #[debug(with = "hex_debug")]
-    #[serde(with = "serde_bytes")]
-    pub chain_proofs: Vec<u8>,
-    /// The current chain state.
-    #[debug(with = "hex_debug")]
-    #[serde(with = "serde_bytes")]
-    pub chain_state: Vec<u8>,
-    /// The current zstore.
-    #[debug(with = "hex_debug")]
-    #[serde(with = "serde_bytes")]
-    pub zstore_view: Vec<u8>,
+pub enum PreprocessData {
+    /// Handle a `:spawn`.
+    Spawn {
+        /// The id of the spawned chain.
+        pid: ChainId,
+    },
+    /// Handle a `:send`.
+    Send,
+    /// Currently `:receive` is not selective, for there's no other data we need to check against.
+    Receive {
+        /// The message sent as a serialized z-ptr.
+        message: Vec<u8>,
+    },
+    /// No control keyword, just a normal result.
+    None,
+}
+
+/// Lurk control data.
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize, WitType, WitStore, WitLoad)]
+pub enum PostprocessData {
+    /// Handle a `:spawn`.
+    Spawn,
+    /// Handle a `:send`.
+    Send {
+        /// The id of the receiving chain.
+        other_pid: ChainId,
+        /// The message sent as a serialized z-ptr.
+        message: Vec<u8>,
+    },
+    /// Handle a `:receive`.
+    Receive,
+    /// No control keyword, just a normal result.
+    None,
 }
 
 doc_scalar!(Bytecode, "A WebAssembly module's bytecode");

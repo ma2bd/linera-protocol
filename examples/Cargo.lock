@@ -1311,7 +1311,7 @@ dependencies = [
  "bitflags 2.6.0",
  "cexpr",
  "clang-sys",
- "itertools 0.13.0",
+ "itertools 0.11.0",
  "log",
  "prettyplease",
  "proc-macro2",
@@ -1776,6 +1776,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3fd119d74b830634cea2a0f58bbd0d54540518a14397557951e79340abc28c0"
 
 [[package]]
+name = "combine"
+version = "4.6.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba5a308b75df32fe02788e748662718f03fde005016435c444eea572398219fd"
+dependencies = [
+ "bytes",
+ "memchr",
+]
+
+[[package]]
 name = "compact_str"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1787,6 +1797,19 @@ dependencies = [
  "rustversion",
  "ryu",
  "static_assertions",
+]
+
+[[package]]
+name = "concurrent-lurk"
+version = "0.1.0"
+dependencies = [
+ "async-graphql",
+ "linera-sdk",
+ "log",
+ "serde",
+ "serde_json",
+ "test-log",
+ "tokio",
 ]
 
 [[package]]
@@ -3714,6 +3737,65 @@ dependencies = [
 ]
 
 [[package]]
+name = "graphql-introspection-query"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f2a4732cf5140bd6c082434494f785a19cfb566ab07d1382c3671f5812fed6d"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "graphql-parser"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a818c0d883d7c0801df27be910917750932be279c7bc82dc541b8769425f409"
+dependencies = [
+ "combine",
+ "thiserror 1.0.65",
+]
+
+[[package]]
+name = "graphql_client"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09cdf7b487d864c2939b23902291a5041bc4a84418268f25fda1c8d4e15ad8fa"
+dependencies = [
+ "graphql_query_derive",
+ "reqwest 0.11.27",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "graphql_client_codegen"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a40f793251171991c4eb75bd84bc640afa8b68ff6907bc89d3b712a22f700506"
+dependencies = [
+ "graphql-introspection-query",
+ "graphql-parser",
+ "heck 0.4.1",
+ "lazy_static",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "graphql_query_derive"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00bda454f3d313f909298f626115092d348bc231025699f557b27e248475f48c"
+dependencies = [
+ "graphql_client_codegen",
+ "proc-macro2",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "group"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5154,7 +5236,7 @@ dependencies = [
 [[package]]
 name = "loam-macros"
 version = "0.1.0"
-source = "git+https://github.com/lurk-lab/lurk.git?branch=whz%2Fon-linera#87f0826c9e4c1b95113f5ca6a17655d91c4ef6e0"
+source = "git+https://github.com/lurk-lab/lurk.git?branch=whz%2Fon-linera#3489cc6ff1ba6939a2610db2f28867607ed50fb7"
 dependencies = [
  "derive-syn-parse",
  "itertools 0.13.0",
@@ -5192,7 +5274,7 @@ dependencies = [
 [[package]]
 name = "lurk"
 version = "0.5.0"
-source = "git+https://github.com/lurk-lab/lurk.git?branch=whz%2Fon-linera#87f0826c9e4c1b95113f5ca6a17655d91c4ef6e0"
+source = "git+https://github.com/lurk-lab/lurk.git?branch=whz%2Fon-linera#3489cc6ff1ba6939a2610db2f28867607ed50fb7"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -5205,8 +5287,8 @@ dependencies = [
  "clap",
  "either",
  "expect-test",
+ "graphql_client",
  "hashbrown 0.14.5",
- "hex",
  "home",
  "hybrid-array",
  "indexmap 2.5.0",
@@ -5236,6 +5318,7 @@ dependencies = [
  "rand_xoshiro",
  "ratatui",
  "rayon",
+ "reqwest 0.11.27",
  "rustc-hash 2.1.0",
  "rustyline",
  "rustyline-derive",
@@ -5251,6 +5334,7 @@ dependencies = [
  "strum 0.26.3",
  "tempfile",
  "thiserror 1.0.65",
+ "tokio",
  "vergen",
 ]
 
@@ -6612,7 +6696,7 @@ checksum = "0c1318b19085f08681016926435853bbf7858f9c082d0999b80550ff5d9abe15"
 dependencies = [
  "bytes",
  "heck 0.5.0",
- "itertools 0.13.0",
+ "itertools 0.11.0",
  "log",
  "multimap",
  "once_cell",
@@ -6632,7 +6716,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9552f850d5f0964a4e4d0bf306459ac29323ddfbae05e35a7c0d35cb0803cc5"
 dependencies = [
  "anyhow",
- "itertools 0.13.0",
+ "itertools 0.11.0",
  "proc-macro2",
  "quote",
  "syn 2.0.95",

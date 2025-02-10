@@ -5,7 +5,7 @@
 
 use linera_base::{
     crypto::CryptoHash,
-    data_types::{Amount, BlockHeight, LurkMicrochainData},
+    data_types::{Amount, BlockHeight, LurkMicrochainData, PostprocessData, PreprocessData},
     identifiers::{AccountOwner, ApplicationId, ChainId, MessageId, ModuleId},
     ownership::{ChangeApplicationPermissionsError, CloseChainError},
     vm::VmRuntime,
@@ -90,6 +90,37 @@ impl From<wit_contract_api::LurkMicrochainData> for LurkMicrochainData {
             chain_proofs: data.chain_proofs,
             chain_state: data.chain_state,
             zstore_view: data.zstore_view,
+        }
+    }
+}
+
+impl From<wit_contract_api::PreprocessData> for PreprocessData {
+    fn from(data: wit_contract_api::PreprocessData) -> Self {
+        match data {
+            wit_contract_api::PreprocessData::Spawn(pid) => {
+                PreprocessData::Spawn { pid: pid.into() }
+            }
+            wit_contract_api::PreprocessData::Send => PreprocessData::Send,
+            wit_contract_api::PreprocessData::Receive(message) => {
+                PreprocessData::Receive { message }
+            }
+            wit_contract_api::PreprocessData::None => PreprocessData::None,
+        }
+    }
+}
+
+impl From<wit_contract_api::PostprocessData> for PostprocessData {
+    fn from(data: wit_contract_api::PostprocessData) -> Self {
+        match data {
+            wit_contract_api::PostprocessData::Spawn => PostprocessData::Spawn,
+            wit_contract_api::PostprocessData::Send((other_pid, message)) => {
+                PostprocessData::Send {
+                    other_pid: other_pid.into(),
+                    message,
+                }
+            }
+            wit_contract_api::PostprocessData::Receive => PostprocessData::Receive,
+            wit_contract_api::PostprocessData::None => PostprocessData::None,
         }
     }
 }

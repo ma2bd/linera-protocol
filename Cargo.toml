@@ -267,7 +267,7 @@ native-fungible = { path = "./examples/native-fungible" }
 non-fungible = { path = "./examples/non-fungible" }
 social = { path = "./examples/social" }
 
-lurk-microchain = { path = "./examples/lurk-microchain" }
+concurrent-lurk = { path = "./examples/concurrent-lurk" }
 
 lurk-microchain = { path = "./examples/lurk-microchain" }
 

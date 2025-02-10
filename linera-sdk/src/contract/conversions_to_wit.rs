@@ -6,8 +6,8 @@
 use linera_base::{
     crypto::CryptoHash,
     data_types::{
-        Amount, ApplicationPermissions, BlockHeight, LurkMicrochainData, Resources,
-        SendMessageRequest, TimeDelta,
+        Amount, ApplicationPermissions, BlockHeight, LurkMicrochainData, PostprocessData,
+        PreprocessData, Resources, SendMessageRequest, TimeDelta,
     },
     identifiers::{
         Account, AccountOwner, ApplicationId, ChainId, ChannelName, Destination, MessageId,
@@ -271,16 +271,38 @@ impl From<WriteOperation> for wit_contract_api::WriteOperation {
 }
 
 impl From<LurkMicrochainData> for wit_contract_api::LurkMicrochainData {
-    fn from(ownership: LurkMicrochainData) -> Self {
+    fn from(data: LurkMicrochainData) -> Self {
         let LurkMicrochainData {
             chain_proofs,
             chain_state,
             zstore_view,
-        } = ownership;
+        } = data;
         Self {
             chain_proofs,
             chain_state,
             zstore_view,
+        }
+    }
+}
+
+impl From<PreprocessData> for wit_contract_api::PreprocessData {
+    fn from(data: PreprocessData) -> Self {
+        match data {
+            PreprocessData::Spawn { pid } => Self::Spawn(pid.into()),
+            PreprocessData::Send => Self::Send,
+            PreprocessData::Receive { message } => Self::Receive(message),
+            PreprocessData::None => Self::None,
+        }
+    }
+}
+
+impl From<PostprocessData> for wit_contract_api::PostprocessData {
+    fn from(data: PostprocessData) -> Self {
+        match data {
+            PostprocessData::Spawn => Self::Spawn,
+            PostprocessData::Send { other_pid, message } => Self::Send((other_pid.into(), message)),
+            PostprocessData::Receive => Self::Receive,
+            PostprocessData::None => Self::None,
         }
     }
 }

@@ -36,7 +36,9 @@ use linera_base::{
     abi::Abi,
     crypto::{BcsHashable, CryptoHash},
     data_types::{
-        Amount, ApplicationDescription, ApplicationPermissions, ArithmeticError, Blob, BlockHeight, DecompressionError, LurkMicrochainData, Resources, SendMessageRequest, Timestamp
+        Amount, ApplicationDescription, ApplicationPermissions, ArithmeticError, Blob, BlockHeight,
+        DecompressionError, LurkMicrochainData, PostprocessData, PreprocessData, Resources,
+        SendMessageRequest, Timestamp,
     },
     doc_scalar, hex_debug, http,
     identifiers::{
@@ -339,6 +341,8 @@ pub enum ExecutionError {
     FlawedData(String),
     #[error("Proof verification failed, version {0:?}")]
     ProofVerificationFailed(String),
+    #[error("Lurk error: {0:?}")]
+    LurkError(String),
 }
 
 impl From<ViewError> for ExecutionError {
@@ -799,6 +803,17 @@ pub trait ContractRuntime: BaseRuntime {
         chain_proof_hash: CryptoHash,
         data: LurkMicrochainData,
     ) -> Result<LurkMicrochainData, ExecutionError>;
+
+    fn preprocess_microchain_transition(
+        &mut self,
+        chain_proof_hash: CryptoHash,
+        data: LurkMicrochainData,
+    ) -> Result<PreprocessData, ExecutionError>;
+
+    fn postprocess_microchain_transition(
+        &mut self,
+        data: LurkMicrochainData,
+    ) -> Result<PostprocessData, ExecutionError>;
 }
 
 /// An operation to be executed in a block.

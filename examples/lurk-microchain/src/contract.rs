@@ -9,7 +9,8 @@ use async_graphql::ComplexObject;
 use linera_sdk::{
     abi::WithContractAbi,
     linera_base_types::{
-        Amount, ApplicationPermissions, ChainId, ChainOwnership, Owner, TimeoutConfig,
+        Amount, ApplicationPermissions, ChainId, ChainOwnership, LurkMicrochainData, Owner,
+        TimeoutConfig,
     },
     views::{RootView, View},
     Contract, ContractRuntime, DataBlobHash,
@@ -66,11 +67,8 @@ impl Contract for LurkMicrochainContract {
             } => {
                 self.runtime.assert_data_blob_exists(chain_state.clone());
                 let chain_state = self.runtime.read_data_blob(chain_state);
-                let (chain_proofs, chain_state, zstore_view) =
-                    self.runtime.microchain_start(chain_state);
-                self.state.chain_proofs.set(chain_proofs);
-                self.state.chain_state.set(chain_state);
-                self.state.zstore_view.set(zstore_view);
+                let data = self.runtime.microchain_start(chain_state);
+                self.set_data(data);
             }
         }
     }
@@ -83,16 +81,11 @@ impl Contract for LurkMicrochainContract {
 impl LurkMicrochainContract {
     fn execute_transition(&mut self, chain_proof: DataBlobHash) {
         assert!(self.runtime.chain_id() != self.main_chain_id());
-        let (chain_proofs, chain_state, zstore_view) = self.runtime.microchain_transition(
-            chain_proof,
-            self.state.chain_proofs.get().clone(), // Hmm, this clone seems a bit strange, but we keep it for now.
-            self.state.chain_state.get().clone(),
-            self.state.zstore_view.get().clone(),
-        );
+        let data = self
+            .runtime
+            .microchain_transition(chain_proof, self.get_data());
 
-        self.state.chain_proofs.set(chain_proofs);
-        self.state.chain_state.set(chain_state);
-        self.state.zstore_view.set(zstore_view);
+        self.set_data(data);
     }
 
     async fn execute_start(&mut self, accounts: [Owner; 2], chain_state: DataBlobHash) {
@@ -128,6 +121,20 @@ impl LurkMicrochainContract {
 
     fn main_chain_id(&mut self) -> ChainId {
         self.runtime.application_creator_chain_id()
+    }
+
+    fn get_data(&self) -> LurkMicrochainData {
+        LurkMicrochainData {
+            chain_proofs: self.state.chain_proofs.get().clone(),
+            chain_state: self.state.chain_state.get().clone(),
+            zstore_view: self.state.zstore_view.get().clone(),
+        }
+    }
+
+    fn set_data(&mut self, data: LurkMicrochainData) {
+        self.state.chain_proofs.set(data.chain_proofs);
+        self.state.chain_state.set(data.chain_state);
+        self.state.zstore_view.set(data.zstore_view);
     }
 }
 

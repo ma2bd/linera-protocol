@@ -6,8 +6,8 @@
 use linera_base::{
     abi::{ContractAbi, ServiceAbi},
     data_types::{
-        Amount, ApplicationPermissions, BlockHeight, LurkMicrochainData, Resources,
-        SendMessageRequest, Timestamp,
+        Amount, ApplicationPermissions, BlockHeight, LurkMicrochainData, PostprocessData,
+        PreprocessData, Resources, SendMessageRequest, Timestamp,
     },
     ensure, http,
     identifiers::{
@@ -378,6 +378,26 @@ where
         data: LurkMicrochainData,
     ) -> LurkMicrochainData {
         let data = contract_wit::microchain_transition(chain_proof_hash.0.into(), &data.into());
+        data.into()
+    }
+
+    /// Preprocess a microchain transition.
+    pub fn preprocess_microchain_transition(
+        &mut self,
+        chain_proof_hash: DataBlobHash,
+        data: LurkMicrochainData,
+    ) -> PreprocessData {
+        let data =
+            contract_wit::preprocess_microchain_transition(chain_proof_hash.0.into(), &data.into());
+        data.into()
+    }
+
+    /// Postprocess a microchain transition.
+    pub fn postprocess_microchain_transition(
+        &mut self,
+        data: LurkMicrochainData,
+    ) -> PostprocessData {
+        let data = contract_wit::postprocess_microchain_transition(&data.into());
         data.into()
     }
 }

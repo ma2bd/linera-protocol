@@ -11,7 +11,8 @@ use std::{
 use linera_base::{
     abi::{ContractAbi, ServiceAbi},
     data_types::{
-        Amount, ApplicationPermissions, BlockHeight, Resources, SendMessageRequest, Timestamp,
+        Amount, ApplicationPermissions, BlockHeight, LurkMicrochainData, PostprocessData,
+        PreprocessData, Resources, SendMessageRequest, Timestamp,
     },
     ensure, http,
     identifiers::{
@@ -893,10 +894,10 @@ where
     }
 
     /// Reads a data blob with the given hash from storage.
-    pub fn read_data_blob(&mut self, hash: &DataBlobHash) -> Vec<u8> {
+    pub fn read_data_blob(&mut self, hash: DataBlobHash) -> Vec<u8> {
         let maybe_request = self.expected_read_data_blob_requests.pop_front();
         let (expected_hash, response) = maybe_request.expect("Unexpected read_data_blob request");
-        assert_eq!(*hash, expected_hash);
+        assert_eq!(hash, expected_hash);
         response
     }
 
@@ -912,6 +913,46 @@ where
     /// Returns the round in which this block was validated.
     pub fn validation_round(&mut self) -> Option<u32> {
         self.round
+    }
+
+    /// Dummy function
+    pub fn microchain_start(&mut self, _chain_state: Vec<u8>) -> LurkMicrochainData {
+        todo!()
+    }
+
+    /// Dummy function
+    pub fn microchain_transition(
+        &mut self,
+        _chain_proof: DataBlobHash,
+        _data: LurkMicrochainData,
+    ) -> LurkMicrochainData {
+        todo!()
+    }
+
+    /// Dummy function
+    pub fn preprocess_microchain_transition(
+        &mut self,
+        _chain_proof: DataBlobHash,
+        _data: LurkMicrochainData,
+    ) -> PreprocessData {
+        // if control is :spawn, then we need the "ready" PID, and check that it is equal to the given argument
+        // if control is :send, then do nothing
+        // if control is :receive, then we need the next message in the message queue, and check against given argument
+        // if control is nothing, then do nothing
+        todo!()
+    }
+
+    /// Dummy function
+    pub fn postprocess_microchain_transition(
+        &mut self,
+        _data: LurkMicrochainData,
+    ) -> PostprocessData {
+        // inspect the chain_state to see what the control result is
+        // if control is :spawn, then create a new chain, set ready = new-pid, and wait for a user transition
+        // if control is :send, then send a message to other chain
+        // if control is :receive, then wait for a message on the next transition and do nothing
+        // if control is nothing, then do nothing
+        todo!()
     }
 }
 

@@ -6,8 +6,8 @@ use std::{any::Any, collections::HashMap, marker::PhantomData};
 use linera_base::{
     crypto::CryptoHash,
     data_types::{
-        Amount, ApplicationPermissions, BlockHeight, LurkMicrochainData, SendMessageRequest,
-        Timestamp,
+        Amount, ApplicationPermissions, BlockHeight, LurkMicrochainData, PostprocessData,
+        PreprocessData, SendMessageRequest, Timestamp,
     },
     http,
     identifiers::{
@@ -635,7 +635,7 @@ where
             .map_err(|error| RuntimeError::Custom(error.into()))
     }
 
-    /// Returns the round in which this block was validated.
+    /// Start a Lurk microchain with the given state.
     #[allow(clippy::type_complexity)]
     fn microchain_start(
         caller: &mut Caller,
@@ -648,7 +648,7 @@ where
             .map_err(|error| RuntimeError::Custom(error.into()))
     }
 
-    /// Writes a batch of `operations` to storage.
+    /// Prove a Lurk microchain transition.
     fn microchain_transition(
         caller: &mut Caller,
         chain_proof_hash: CryptoHash,
@@ -658,6 +658,31 @@ where
             .user_data_mut()
             .runtime_mut()
             .microchain_transition(chain_proof_hash, data)
+            .map_err(|error| RuntimeError::Custom(error.into()))
+    }
+
+    /// Preprocessing step before a Lurk microchain transition.
+    fn preprocess_microchain_transition(
+        caller: &mut Caller,
+        chain_proof_hash: CryptoHash,
+        data: LurkMicrochainData,
+    ) -> Result<PreprocessData, RuntimeError> {
+        caller
+            .user_data_mut()
+            .runtime_mut()
+            .preprocess_microchain_transition(chain_proof_hash, data)
+            .map_err(|error| RuntimeError::Custom(error.into()))
+    }
+
+    /// Postprocessing step after a Lurk microchain transition.
+    fn postprocess_microchain_transition(
+        caller: &mut Caller,
+        data: LurkMicrochainData,
+    ) -> Result<PostprocessData, RuntimeError> {
+        caller
+            .user_data_mut()
+            .runtime_mut()
+            .postprocess_microchain_transition(data)
             .map_err(|error| RuntimeError::Custom(error.into()))
     }
 }

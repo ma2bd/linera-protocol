@@ -22,6 +22,8 @@ interface contract-runtime-api {
     write-batch: func(operations: list<write-operation>);
     microchain-start: func(chain-state: list<u8>) -> lurk-microchain-data;
     microchain-transition: func(chain-proof-hash: crypto-hash, data: lurk-microchain-data) -> lurk-microchain-data;
+    preprocess-microchain-transition: func(chain-proof-hash: crypto-hash, data: lurk-microchain-data) -> preprocess-data;
+    postprocess-microchain-transition: func(data: lurk-microchain-data) -> postprocess-data;
 
     record account {
         chain-id: chain-id,
@@ -106,6 +108,20 @@ interface contract-runtime-api {
         contract-blob-hash: crypto-hash,
         service-blob-hash: crypto-hash,
         vm-runtime: vm-runtime,
+    }
+
+    variant postprocess-data {
+        spawn,
+        send(tuple<chain-id, list<u8>>),
+        receive,
+        none,
+    }
+
+    variant preprocess-data {
+        spawn(chain-id),
+        send,
+        receive(list<u8>),
+        none,
     }
 
     record resources {
