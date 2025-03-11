@@ -24,8 +24,8 @@ use linera_base::{
     },
     ensure, hex_debug,
     identifiers::{
-        Account, AccountOwner, BlobId, BlobType, ChainDescription, ChainId, ChannelFullName,
-        EventId, MessageId, ModuleId, Owner, StreamId,
+        Account, AccountOwner, ApplicationId, BlobId, BlobType, ChainDescription, ChainId,
+        ChannelFullName, EventId, MessageId, ModuleId, Owner, StreamId,
     },
     ownership::{ChainOwnership, TimeoutConfig},
 };
@@ -45,9 +45,9 @@ use {linera_base::prometheus_util::register_int_counter_vec, prometheus::IntCoun
 use crate::test_utils::SystemExecutionState;
 use crate::{
     committee::{Committee, Epoch},
-    ChannelName, ChannelSubscription, Destination, ExecutionRuntimeContext, MessageContext,
-    MessageKind, OperationContext, QueryContext, QueryOutcome, RawExecutionOutcome,
-    RawOutgoingMessage, TransactionTracker, UserApplicationDescription, UserApplicationId,
+    ApplicationDescription, ChannelName, ChannelSubscription, Destination, ExecutionRuntimeContext,
+    MessageContext, MessageKind, OperationContext, QueryContext, QueryOutcome, RawExecutionOutcome,
+    RawOutgoingMessage, TransactionTracker,
 };
 
 /// The relative index of the `OpenChain` message created by the `OpenChain` operation.
@@ -184,7 +184,7 @@ pub enum SystemOperation {
         #[debug(with = "hex_debug", skip_if = Vec::is_empty)]
         instantiation_argument: Vec<u8>,
         #[debug(skip_if = Vec::is_empty)]
-        required_application_ids: Vec<UserApplicationId>,
+        required_application_ids: Vec<ApplicationId>,
     },
     /// Operations that are only allowed on the admin chain.
     Admin(AdminOperation),
@@ -342,7 +342,7 @@ impl UserData {
 
 #[derive(Debug)]
 pub struct CreateApplicationResult {
-    pub app_id: UserApplicationId,
+    pub app_id: ApplicationId,
     pub txn_tracker: TransactionTracker,
 }
 
@@ -398,7 +398,7 @@ pub enum SystemExecutionError {
     #[error("Cannot decrease the chain's timestamp")]
     TicksOutOfOrder,
     #[error("Application {0:?} is not registered by the chain")]
-    UnknownApplicationId(Box<UserApplicationId>),
+    UnknownApplicationId(Box<ApplicationId>),
     #[error("Chain is not active yet.")]
     InactiveChain,
 
@@ -446,7 +446,7 @@ where
         context: OperationContext,
         operation: SystemOperation,
         txn_tracker: &mut TransactionTracker,
-    ) -> Result<Option<(UserApplicationId, Vec<u8>)>, SystemExecutionError> {
+    ) -> Result<Option<(ApplicationId, Vec<u8>)>, SystemExecutionError> {
         use SystemOperation::*;
         let mut outcome = RawExecutionOutcome {
             authenticated_signer: context.authenticated_signer,
@@ -719,7 +719,7 @@ where
     pub async fn transfer(
         &mut self,
         authenticated_signer: Option<Owner>,
-        authenticated_application_id: Option<UserApplicationId>,
+        authenticated_application_id: Option<ApplicationId>,
         source: Option<AccountOwner>,
         recipient: Recipient,
         amount: Amount,
@@ -771,7 +771,7 @@ where
     pub async fn claim(
         &self,
         authenticated_signer: Option<Owner>,
-        authenticated_application_id: Option<UserApplicationId>,
+        authenticated_application_id: Option<ApplicationId>,
         source: AccountOwner,
         target_id: ChainId,
         recipient: Recipient,
@@ -1001,7 +1001,7 @@ where
         block_height: BlockHeight,
         module_id: ModuleId,
         parameters: Vec<u8>,
-        required_application_ids: Vec<UserApplicationId>,
+        required_application_ids: Vec<ApplicationId>,
         mut txn_tracker: TransactionTracker,
     ) -> Result<CreateApplicationResult, SystemExecutionError> {
         let application_index = txn_tracker.next_application_index();
@@ -1015,7 +1015,7 @@ where
         self.blob_used(Some(&mut txn_tracker), service_bytecode_blob_id)
             .await?;
 
-        let application_description = UserApplicationDescription {
+        let application_description = ApplicationDescription {
             module_id,
             creator_chain_id: chain_id,
             block_height,
@@ -1029,14 +1029,14 @@ where
         txn_tracker.add_created_blob(Blob::new_application_description(&application_description));
 
         Ok(CreateApplicationResult {
-            app_id: UserApplicationId::from(&application_description),
+            app_id: ApplicationId::from(&application_description),
             txn_tracker,
         })
     }
 
     async fn check_required_applications(
         &mut self,
-        application_description: &UserApplicationDescription,
+        application_description: &ApplicationDescription,
         mut txn_tracker: Option<&mut TransactionTracker>,
     ) -> Result<(), SystemExecutionError> {
         // Make sure that referenced applications IDs have been registered.
@@ -1049,9 +1049,9 @@ where
     /// Retrieves an application's description.
     pub async fn describe_application(
         &mut self,
-        id: UserApplicationId,
+        id: ApplicationId,
         mut txn_tracker: Option<&mut TransactionTracker>,
-    ) -> Result<UserApplicationDescription, SystemExecutionError> {
+    ) -> Result<ApplicationDescription, SystemExecutionError> {
         let blob_id = id.description_blob_id();
         let blob_content = match txn_tracker
             .as_ref()
@@ -1061,7 +1061,7 @@ where
             None => self.read_blob_content(blob_id).await?,
         };
         self.blob_used(txn_tracker.as_deref_mut(), blob_id).await?;
-        let description: UserApplicationDescription = bcs::from_bytes(blob_content.bytes())?;
+        let description: ApplicationDescription = bcs::from_bytes(blob_content.bytes())?;
 
         let (contract_bytecode_blob_id, service_bytecode_blob_id) =
             self.check_bytecode_blobs(&description.module_id).await?;
@@ -1081,9 +1081,9 @@ where
     /// Retrieves the recursive dependencies of applications and applies a topological sort.
     pub async fn find_dependencies(
         &mut self,
-        mut stack: Vec<UserApplicationId>,
+        mut stack: Vec<ApplicationId>,
         txn_tracker: &mut TransactionTracker,
-    ) -> Result<Vec<UserApplicationId>, SystemExecutionError> {
+    ) -> Result<Vec<ApplicationId>, SystemExecutionError> {
         // What we return at the end.
         let mut result = Vec::new();
         // The entries already inserted in `result`.

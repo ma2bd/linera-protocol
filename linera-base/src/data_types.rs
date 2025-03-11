@@ -35,7 +35,7 @@ use crate::{
     doc_scalar, hex_debug, http,
     identifiers::{
         ApplicationId, BlobId, BlobType, ChainId, Destination, EventId, GenericApplicationId,
-        ModuleId, StreamId, UserApplicationId,
+        ModuleId, StreamId,
     },
     limited_writer::{LimitedWriter, LimitedWriterError},
     time::{Duration, SystemTime},
@@ -788,7 +788,7 @@ impl<'de> BcsHashable<'de> for OracleResponse {}
 
 /// Description of the necessary information to run a user application used within blobs.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Hash, Serialize)]
-pub struct UserApplicationDescription {
+pub struct ApplicationDescription {
     /// The unique ID of the bytecode to use for the application.
     pub module_id: ModuleId,
     /// The chain ID that created the application.
@@ -802,21 +802,21 @@ pub struct UserApplicationDescription {
     #[debug(with = "hex_debug")]
     pub parameters: Vec<u8>,
     /// Required dependencies.
-    pub required_application_ids: Vec<UserApplicationId>,
+    pub required_application_ids: Vec<ApplicationId>,
 }
 
-impl From<&UserApplicationDescription> for UserApplicationId {
-    fn from(description: &UserApplicationDescription) -> Self {
-        UserApplicationId::new(CryptoHash::new(&BlobContent::new_application_description(
+impl From<&ApplicationDescription> for ApplicationId {
+    fn from(description: &ApplicationDescription) -> Self {
+        ApplicationId::new(CryptoHash::new(&BlobContent::new_application_description(
             description,
         )))
     }
 }
 
-impl BcsHashable<'_> for UserApplicationDescription {}
+impl BcsHashable<'_> for ApplicationDescription {}
 
-impl UserApplicationDescription {
-    /// Gets the serialized bytes for this `UserApplicationDescription`.
+impl ApplicationDescription {
+    /// Gets the serialized bytes for this `ApplicationDescription`.
     pub fn to_bytes(&self) -> Vec<u8> {
         bcs::to_bytes(self).expect("Serializing blob bytes should not fail!")
     }
@@ -993,10 +993,8 @@ impl BlobContent {
         )
     }
 
-    /// Creates a new application description [`BlobContent`] from a [`UserApplicationDescription`].
-    pub fn new_application_description(
-        application_description: &UserApplicationDescription,
-    ) -> Self {
+    /// Creates a new application description [`BlobContent`] from a [`ApplicationDescription`].
+    pub fn new_application_description(application_description: &ApplicationDescription) -> Self {
         let bytes = application_description.to_bytes();
         BlobContent::new(BlobType::ApplicationDescription, bytes)
     }
@@ -1072,9 +1070,7 @@ impl Blob {
 
     /// Creates a new application description [`BlobContent`] from the provided
     /// description.
-    pub fn new_application_description(
-        application_description: &UserApplicationDescription,
-    ) -> Self {
+    pub fn new_application_description(application_description: &ApplicationDescription) -> Self {
         Blob::new(BlobContent::new_application_description(
             application_description,
         ))
@@ -1196,7 +1192,7 @@ doc_scalar!(
     "A blob of binary data, with its content-addressed blob ID."
 );
 doc_scalar!(
-    UserApplicationDescription,
+    ApplicationDescription,
     "Description of the necessary information to run a user application"
 );
 
