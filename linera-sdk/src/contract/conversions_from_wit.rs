@@ -5,7 +5,7 @@
 
 use linera_base::{
     crypto::CryptoHash,
-    data_types::{Amount, BlockHeight},
+    data_types::{Amount, BlockHeight, LurkMicrochainData},
     identifiers::{AccountOwner, ApplicationId, ChainId, MessageId, ModuleId},
     ownership::{ChangeApplicationPermissionsError, CloseChainError},
     vm::VmRuntime,
@@ -81,6 +81,16 @@ impl From<wit_contract_api::Amount> for Amount {
         let (lower_half, upper_half) = balance.inner0;
         let value = ((upper_half as u128) << 64) | (lower_half as u128);
         Amount::from_attos(value)
+    }
+}
+
+impl From<wit_contract_api::LurkMicrochainData> for LurkMicrochainData {
+    fn from(data: wit_contract_api::LurkMicrochainData) -> Self {
+        LurkMicrochainData {
+            chain_proofs: data.chain_proofs,
+            chain_state: data.chain_state,
+            zstore_view: data.zstore_view,
+        }
     }
 }
 

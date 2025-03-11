@@ -6,7 +6,8 @@
 use linera_base::{
     crypto::CryptoHash,
     data_types::{
-        Amount, ApplicationPermissions, BlockHeight, Resources, SendMessageRequest, TimeDelta,
+        Amount, ApplicationPermissions, BlockHeight, LurkMicrochainData, Resources,
+        SendMessageRequest, TimeDelta,
     },
     identifiers::{
         Account, AccountOwner, ApplicationId, ChainId, ChannelName, Destination, MessageId,
@@ -265,6 +266,21 @@ impl From<WriteOperation> for wit_contract_api::WriteOperation {
             WriteOperation::Put { key, value } => {
                 wit_contract_api::WriteOperation::Put((key, value))
             }
+        }
+    }
+}
+
+impl From<LurkMicrochainData> for wit_contract_api::LurkMicrochainData {
+    fn from(ownership: LurkMicrochainData) -> Self {
+        let LurkMicrochainData {
+            chain_proofs,
+            chain_state,
+            zstore_view,
+        } = ownership;
+        Self {
+            chain_proofs,
+            chain_state,
+            zstore_view,
         }
     }
 }

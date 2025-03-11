@@ -16,6 +16,7 @@ members = [
     "non-fungible",
     "rfq",
     "social",
+    "lurk-microchain",
 ]
 
 [workspace.dependencies]
@@ -66,3 +67,7 @@ strip = 'debuginfo'
 
 [profile.bench]
 debug = true
+
+[patch.crates-io.p3-poseidon2]
+git = "https://github.com/lurk-lab/p3.git"
+branch = "poseidon2-patch"

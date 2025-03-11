@@ -6,7 +6,8 @@
 use linera_base::{
     abi::{ContractAbi, ServiceAbi},
     data_types::{
-        Amount, ApplicationPermissions, BlockHeight, Resources, SendMessageRequest, Timestamp,
+        Amount, ApplicationPermissions, BlockHeight, LurkMicrochainData, Resources,
+        SendMessageRequest, Timestamp,
     },
     ensure, http,
     identifiers::{
@@ -362,6 +363,22 @@ where
     /// Returns the round in which this block was validated.
     pub fn validation_round(&mut self) -> Option<u32> {
         contract_wit::validation_round()
+    }
+
+    /// Start a microchain.
+    pub fn microchain_start(&mut self, chain_state: Vec<u8>) -> LurkMicrochainData {
+        let data = contract_wit::microchain_start(&chain_state);
+        data.into()
+    }
+
+    /// Prove a microchain transition.
+    pub fn microchain_transition(
+        &mut self,
+        chain_proof_hash: DataBlobHash,
+        data: LurkMicrochainData,
+    ) -> LurkMicrochainData {
+        let data = contract_wit::microchain_transition(chain_proof_hash.0.into(), &data.into());
+        data.into()
     }
 }
 

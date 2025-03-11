@@ -224,6 +224,12 @@ web-time = "1.1.0"
 wit-bindgen = "0.24.0"
 zstd = "0.13.2"
 
+sp1-sdk = "3.4.0"
+sp1-stark = "3.4.0"
+p3-field = "0.1.4-succinct"
+p3-baby-bear = { version = "0.1.4-succinct", features = ["nightly-features"] }
+lurk = { git = "https://github.com/lurk-lab/lurk.git", branch = "whz/on-linera" }
+
 linera-base = { version = "0.14.0", path = "./linera-base" }
 linera-chain = { version = "0.14.0", path = "./linera-chain" }
 linera-client = { version = "0.14.0", path = "./linera-client" }
@@ -261,6 +267,8 @@ native-fungible = { path = "./examples/native-fungible" }
 non-fungible = { path = "./examples/non-fungible" }
 social = { path = "./examples/social" }
 
+lurk-microchain = { path = "./examples/lurk-microchain" }
+
 [profile.release]
 lto = "thin"
 debug = true
@@ -293,5 +301,6 @@ branch = "no-uuid-wasm-bindgen"
 git = "https://github.com/Twey/wasm_thread"
 branch = "post-message"
 
-[workspace.metadata.spellcheck]
-config = "spellcheck-cfg.toml"
+[patch.crates-io.p3-poseidon2]
+git = "https://github.com/lurk-lab/p3.git"
+branch = "poseidon2-patch"

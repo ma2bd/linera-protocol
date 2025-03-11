@@ -5,7 +5,10 @@ use std::{any::Any, collections::HashMap, marker::PhantomData};
 
 use linera_base::{
     crypto::CryptoHash,
-    data_types::{Amount, ApplicationPermissions, BlockHeight, SendMessageRequest, Timestamp},
+    data_types::{
+        Amount, ApplicationPermissions, BlockHeight, LurkMicrochainData, SendMessageRequest,
+        Timestamp,
+    },
     http,
     identifiers::{
         Account, AccountOwner, ApplicationId, ChainId, ChannelName, MessageId, StreamName,
@@ -629,6 +632,32 @@ where
             .user_data_mut()
             .runtime_mut()
             .write_batch(Batch { operations })
+            .map_err(|error| RuntimeError::Custom(error.into()))
+    }
+
+    /// Returns the round in which this block was validated.
+    #[allow(clippy::type_complexity)]
+    fn microchain_start(
+        caller: &mut Caller,
+        chain_state: Vec<u8>,
+    ) -> Result<LurkMicrochainData, RuntimeError> {
+        caller
+            .user_data_mut()
+            .runtime_mut()
+            .microchain_start(chain_state)
+            .map_err(|error| RuntimeError::Custom(error.into()))
+    }
+
+    /// Writes a batch of `operations` to storage.
+    fn microchain_transition(
+        caller: &mut Caller,
+        chain_proof_hash: CryptoHash,
+        data: LurkMicrochainData,
+    ) -> Result<LurkMicrochainData, RuntimeError> {
+        caller
+            .user_data_mut()
+            .runtime_mut()
+            .microchain_transition(chain_proof_hash, data)
             .map_err(|error| RuntimeError::Custom(error.into()))
     }
 }

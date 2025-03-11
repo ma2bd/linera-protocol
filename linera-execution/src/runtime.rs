@@ -13,8 +13,7 @@ use custom_debug_derive::Debug;
 use linera_base::{
     crypto::CryptoHash,
     data_types::{
-        Amount, ApplicationPermissions, ArithmeticError, BlockHeight, OracleResponse,
-        SendMessageRequest, Timestamp,
+        Amount, ApplicationPermissions, ArithmeticError, BlockHeight, LurkMicrochainData, OracleResponse, SendMessageRequest, Timestamp
     },
     ensure, http,
     identifiers::{
@@ -1477,6 +1476,37 @@ impl ContractRuntime for ContractSyncRuntimeHandle {
             })?
             .recv_response()?;
         Ok(())
+    }
+
+    fn microchain_start(
+        &mut self,
+        chain_state: Vec<u8>,
+    ) -> Result<LurkMicrochainData, ExecutionError> {
+        let this = self.inner();
+        this.execution_state_sender
+            .send_request(|callback| ExecutionRequest::MicrochainStart {
+                chain_state,
+                callback,
+            })?
+            .recv_response()
+    }
+
+    fn microchain_transition(
+        &mut self,
+        chain_proof_hash: CryptoHash,
+        data: LurkMicrochainData,
+    ) -> Result<LurkMicrochainData, ExecutionError> {
+        let mut this = self.inner();
+        let chain_proof_id = BlobId::new(chain_proof_hash, BlobType::Data);
+        this.transaction_tracker
+            .replay_oracle_response(OracleResponse::Blob(chain_proof_id))?;
+        this.execution_state_sender
+            .send_request(|callback| ExecutionRequest::MicrochainTransition {
+                chain_proof_id,
+                data,
+                callback,
+            })?
+            .recv_response()
     }
 }
 

@@ -17,7 +17,7 @@ use custom_debug_derive::Debug;
 use linera_base::{
     crypto::CryptoHash,
     data_types::{
-        Amount, ApplicationPermissions, Blob, BlobContent, BlockHeight, OracleResponse, Timestamp,
+        Amount, ApplicationPermissions, Blob, BlobContent, BlockHeight, LurkMicrochainData, OracleResponse, Timestamp
     },
     ensure, hex_debug,
     identifiers::{
@@ -33,7 +33,23 @@ use linera_views::{
     set_view::HashedSetView,
     views::{ClonableView, HashableView, View, ViewError},
 };
+use lurk::{
+    core::{
+        chipset::lurk_hasher,
+        cli::{
+            microchain::{CallableData, ChainState},
+            proofs::{get_verifier_version, ChainProof, OpaqueChainProof},
+        },
+        eval_direct::build_lurk_toplevel,
+        lang::Lang,
+        stark_machine::new_machine,
+        zstore::{ZStore, ZStoreView},
+    },
+    lair::lair_chip::LairMachineProgram,
+};
+use p3_baby_bear::BabyBear;
 use serde::{Deserialize, Serialize};
+use sp1_stark::StarkGenericConfig;
 #[cfg(with_metrics)]
 use {linera_base::prometheus_util::register_int_counter_vec, prometheus::IntCounterVec};
 
@@ -912,6 +928,192 @@ where
         } else {
             Err(ExecutionError::BlobsNotFound(vec![blob_id]))
         }
+    }
+
+    pub async fn microchain_start(
+        &mut self,
+        chain_state: Vec<u8>,
+        // id_secret: Vec<u32>,
+    ) -> Result<LurkMicrochainData, ExecutionError> {
+        let (_toplevel, mut zstore, _) = build_lurk_toplevel(Lang::empty());
+        let _empty_env = zstore.intern_empty_env();
+
+        let chain_state: ChainState = bincode::deserialize_from(&chain_state[..])
+            .map_err(|_| ExecutionError::DeserializationFailed("chain_state".into()))?;
+        if chain_state.chain_result.is_flawed(&mut zstore) {
+            return Err(ExecutionError::FlawedData(format!(
+                "chain_result ({:?})",
+                chain_state.chain_result.zptr.digest
+            )));
+        }
+        if chain_state.callable_data.is_flawed(&mut zstore) {
+            return Err(ExecutionError::FlawedData(format!(
+                "callable_data ({:?})",
+                chain_state.callable_data.zptr(&mut zstore).digest
+            )));
+        }
+
+        // We need to think about this more.
+        // Ideally it is built into the contract that only the owner can make the changes.
+        // There should be a very natural way to do it.
+
+        // let id_secret: Vec<BabyBear> = id_secret.iter().map(|x| BabyBear::from_canonical_u32(*x)).collect();
+        // let callable_zptr = chain_state.callable_data.zptr(&mut zstore);
+        // let state_cons = zstore.intern_cons(chain_state.chain_result.zptr, callable_zptr);
+        // let id = CommData::hash(&id_secret[..].try_into().unwrap(), &state_cons, &mut zstore);
+
+        let chain_proofs: Vec<OpaqueChainProof> = vec![];
+        let chain_proofs = bincode::serialize(&chain_proofs)
+            .map_err(|_| ExecutionError::SerializationFailed("chain_proofs".into()))?;
+        let chain_state = bincode::serialize(&chain_state)
+            .map_err(|_| ExecutionError::SerializationFailed("chain_state".into()))?;
+        let zstore_view = zstore.to_view();
+        let zstore_view = bincode::serialize(&zstore_view)
+            .map_err(|_| ExecutionError::SerializationFailed("zstore_view".into()))?;
+
+        let data = LurkMicrochainData {
+            chain_proofs,
+            chain_state,
+            zstore_view,
+        };
+        Ok(data)
+    }
+
+    pub async fn microchain_transition(
+        &mut self,
+        chain_proof_id: BlobId,
+        data: LurkMicrochainData,
+    ) -> Result<LurkMicrochainData, ExecutionError> {
+        let LurkMicrochainData {
+            chain_proofs,
+            chain_state,
+            zstore_view,
+        } = data;
+        let chain_proof_bytes = self.read_blob_content(chain_proof_id).await?.into_bytes();
+        let chain_proof: ChainProof = bincode::deserialize_from(&chain_proof_bytes[..])
+            .map_err(|_| ExecutionError::DeserializationFailed("chain_proof".into()))?;
+        let mut chain_proofs: Vec<OpaqueChainProof> = bincode::deserialize_from(&chain_proofs[..])
+            .map_err(|_| ExecutionError::DeserializationFailed("chain_proofs".into()))?;
+        let chain_state: ChainState = bincode::deserialize_from(&chain_state[..])
+            .map_err(|_| ExecutionError::DeserializationFailed("chain_state".into()))?;
+        let zstore_view: ZStoreView<BabyBear> = bincode::deserialize_from(&zstore_view[..])
+            .map_err(|_| ExecutionError::DeserializationFailed("zstore_view".into()))?;
+        let mut zstore = ZStore::from_view(zstore_view, lurk_hasher());
+
+        let ChainProof {
+            crypto_proof,
+            call_args,
+            next_chain_result,
+            next_callable,
+        } = chain_proof;
+
+        let call_args_zptr = {
+            if call_args.is_flawed(&mut zstore) {
+                return Err(ExecutionError::FlawedData(format!(
+                    "call_args ({:?})",
+                    call_args.zptr.digest
+                )));
+            }
+            call_args.zptr
+        };
+
+        let next_chain_result_zptr = {
+            if next_chain_result.is_flawed(&mut zstore) {
+                return Err(ExecutionError::FlawedData(format!(
+                    "next_chain_result ({:?})",
+                    next_chain_result.zptr.digest
+                )));
+            }
+            next_chain_result.zptr
+        };
+
+        let next_callable_zptr = match &next_callable {
+            CallableData::Comm(comm_data) => {
+                if comm_data.payload_is_flawed(&mut zstore) {
+                    return Err(ExecutionError::FlawedData(format!(
+                        "comm_data ({:?})",
+                        comm_data.payload.digest
+                    )));
+                }
+                comm_data.commit(&mut zstore)
+            }
+            CallableData::Fun(lurk_data) => {
+                if lurk_data.is_flawed(&mut zstore) {
+                    return Err(ExecutionError::FlawedData(format!(
+                        "lurk_data ({:?})",
+                        lurk_data.zptr.digest
+                    )));
+                }
+                lurk_data.zptr
+            }
+        };
+
+        // the expression is a call whose callable is part of the server state
+        // and the arguments are provided by the client
+        let callable_zptr = chain_state.callable_data.zptr(&mut zstore);
+        let expr = zstore.intern_cons(callable_zptr, call_args_zptr);
+
+        // the next state is a pair composed by the chain result and next callable
+        // provided by the client
+        let next_state = zstore.intern_cons(next_chain_result_zptr, next_callable_zptr);
+
+        // and now the proof must verify, meaning that the user must have
+        // used the correct callable from the server state
+        let (toplevel, _, _) = build_lurk_toplevel(Lang::empty());
+        let empty_env = zstore.intern_empty_env();
+        let machine_proof = crypto_proof.into_machine_proof(&expr, &empty_env, &next_state);
+        let machine = new_machine(&toplevel);
+        let (_, vk) = machine.setup(&LairMachineProgram);
+        let challenger = &mut machine.config().challenger();
+        if machine.verify(&vk, &machine_proof, challenger).is_err() {
+            let verifier_version = get_verifier_version().to_string();
+            return Err(ExecutionError::ProofVerificationFailed(
+                verifier_version,
+            ));
+        }
+
+        // everything went okay... transition to the next state
+
+        // store new proof
+        chain_proofs.push(OpaqueChainProof {
+            crypto_proof: machine_proof.into(),
+            call_args: call_args_zptr,
+            next_chain_result: next_chain_result_zptr,
+            next_callable: next_callable_zptr,
+        });
+
+        let chain_proofs = bincode::serialize(&chain_proofs)
+            .map_err(|_| ExecutionError::SerializationFailed("chain_proofs".into()))?;
+
+        let next_chain_state = ChainState {
+            chain_result: next_chain_result,
+            callable_data: next_callable,
+        };
+        let next_chain_state = bincode::serialize(&next_chain_state)
+            .map_err(|_| ExecutionError::SerializationFailed("next_chain_state".into()))?;
+
+        let zstore_view = zstore.to_view();
+        let zstore_view = bincode::serialize(&zstore_view)
+            .map_err(|_| ExecutionError::SerializationFailed("zstore_view".into()))?;
+
+        // update the proof index
+        // let mut proof_index = load_proof_index(&id).unwrap_or_default();
+        // let prev_chain_result_zptr = state.chain_result.zptr;
+        // let prev_state =
+        //     zstore.intern_cons(prev_chain_result_zptr, callable_zptr);
+        // proof_index.insert(
+        //     prev_state.digest,
+        //     next_state.digest,
+        //     proofs.len() - 1,
+        // );
+        // dump_proof_index(&id, &proof_index)?;
+
+        let data = LurkMicrochainData {
+            chain_proofs,
+            chain_state: next_chain_state,
+            zstore_view,
+        };
+        Ok(data)
     }
 
     async fn check_bytecode_blobs(

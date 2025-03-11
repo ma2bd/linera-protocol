@@ -36,8 +36,7 @@ use linera_base::{
     abi::Abi,
     crypto::{BcsHashable, CryptoHash},
     data_types::{
-        Amount, ApplicationDescription, ApplicationPermissions, ArithmeticError, Blob, BlockHeight,
-        DecompressionError, Resources, SendMessageRequest, Timestamp,
+        Amount, ApplicationDescription, ApplicationPermissions, ArithmeticError, Blob, BlockHeight, DecompressionError, LurkMicrochainData, Resources, SendMessageRequest, Timestamp
     },
     doc_scalar, hex_debug, http,
     identifiers::{
@@ -331,6 +330,15 @@ pub enum ExecutionError {
     MissingOracleResponse,
     #[error("Internal error: {0}")]
     InternalError(&'static str),
+
+    #[error("Failed to serialize {0:?}")]
+    SerializationFailed(String),
+    #[error("Failed to deserialize {0:?}")]
+    DeserializationFailed(String),
+    #[error("Data {0:?} is flawed")]
+    FlawedData(String),
+    #[error("Proof verification failed, version {0:?}")]
+    ProofVerificationFailed(String),
 }
 
 impl From<ViewError> for ExecutionError {
@@ -778,6 +786,19 @@ pub trait ContractRuntime: BaseRuntime {
 
     /// Writes a batch of changes.
     fn write_batch(&mut self, batch: Batch) -> Result<(), ExecutionError>;
+
+    /// Start a Lurk Microchain.
+    fn microchain_start(
+        &mut self,
+        chain_state: Vec<u8>,
+    ) -> Result<LurkMicrochainData, ExecutionError>;
+
+    /// Apply a Lurk Microchain transition.
+    fn microchain_transition(
+        &mut self,
+        chain_proof_hash: CryptoHash,
+        data: LurkMicrochainData,
+    ) -> Result<LurkMicrochainData, ExecutionError>;
 }
 
 /// An operation to be executed in a block.

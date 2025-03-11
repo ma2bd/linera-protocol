@@ -1209,7 +1209,24 @@ impl Event {
     }
 }
 
-impl BcsHashable<'_> for Event {}
+impl<'de> BcsHashable<'de> for Event {}
+
+/// An event recorded in an executed block.
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize, WitType, WitStore, WitLoad)]
+pub struct LurkMicrochainData {
+    /// The current chain proofs.
+    #[debug(with = "hex_debug")]
+    #[serde(with = "serde_bytes")]
+    pub chain_proofs: Vec<u8>,
+    /// The current chain state.
+    #[debug(with = "hex_debug")]
+    #[serde(with = "serde_bytes")]
+    pub chain_state: Vec<u8>,
+    /// The current zstore.
+    #[debug(with = "hex_debug")]
+    #[serde(with = "serde_bytes")]
+    pub zstore_view: Vec<u8>,
+}
 
 doc_scalar!(Bytecode, "A WebAssembly module's bytecode");
 doc_scalar!(Amount, "A non-negative amount of tokens.");

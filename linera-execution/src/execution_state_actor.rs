@@ -15,7 +15,7 @@ use linera_base::prometheus_util::{
     exponential_bucket_latencies, register_histogram_vec, MeasureLatency as _,
 };
 use linera_base::{
-    data_types::{Amount, ApplicationPermissions, BlobContent, BlockHeight, Timestamp},
+    data_types::{Amount, ApplicationPermissions, BlobContent, BlockHeight, LurkMicrochainData, Timestamp},
     ensure, hex_debug, hex_vec_debug, http,
     identifiers::{Account, AccountOwner, BlobId, BlobType, ChainId, MessageId},
     ownership::ChainOwnership,
@@ -437,6 +437,21 @@ where
                 let app_permissions = self.system.application_permissions.get();
                 callback.respond(app_permissions.clone());
             }
+            
+            MicrochainStart {
+                chain_state,
+                callback,
+            } => callback.respond(self.system.microchain_start(chain_state).await?),
+
+            MicrochainTransition {
+                chain_proof_id,
+                data,
+                callback,
+            } => callback.respond(
+                self.system
+                    .microchain_transition(chain_proof_id, data)
+                    .await?,
+            ),
         }
 
         Ok(())
@@ -692,5 +707,18 @@ pub enum ExecutionRequest {
     GetApplicationPermissions {
         #[debug(skip)]
         callback: Sender<ApplicationPermissions>,
+    },
+    
+    MicrochainStart {
+        chain_state: Vec<u8>,
+        #[debug(skip)]
+        callback: Sender<LurkMicrochainData>,
+    },
+
+    MicrochainTransition {
+        chain_proof_id: BlobId,
+        data: LurkMicrochainData,
+        #[debug(skip)]
+        callback: Sender<LurkMicrochainData>,
     },
 }

@@ -20,6 +20,8 @@ interface contract-runtime-api {
     consume-fuel: func(fuel: u64);
     validation-round: func() -> option<u32>;
     write-batch: func(operations: list<write-operation>);
+    microchain-start: func(chain-state: list<u8>) -> lurk-microchain-data;
+    microchain-transition: func(chain-proof-hash: crypto-hash, data: lurk-microchain-data) -> lurk-microchain-data;
 
     record account {
         chain-id: chain-id,
@@ -86,6 +88,12 @@ interface contract-runtime-api {
     variant destination {
         recipient(chain-id),
         subscribers(channel-name),
+    }
+
+    record lurk-microchain-data {
+        chain-proofs: list<u8>,
+        chain-state: list<u8>,
+        zstore-view: list<u8>,
     }
 
     record message-id {
