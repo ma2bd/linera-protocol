@@ -4,7 +4,7 @@
 use async_graphql::SimpleObject;
 use concurrent_lurk::ProcessId;
 use linera_sdk::{
-    linera_base_types::Owner,
+    linera_base_types::AccountOwner,
     views::{linera_views, QueueView, RegisterView, RootView, ViewStorageContext},
 };
 
@@ -15,7 +15,7 @@ pub struct ConcurrentLurkState {
     /// State of the concurrent lurk application.
     pub dummy: RegisterView<bool>,
     /// Owner of this Lurk process.
-    pub owner: RegisterView<Option<Owner>>,
+    pub owner: RegisterView<Option<AccountOwner>>,
     /// All the proofs currently on chain.
     pub chain_proofs: RegisterView<Vec<u8>>,
     /// The program state.

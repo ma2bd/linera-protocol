@@ -10,7 +10,7 @@ use concurrent_lurk::{ConcurrentLurkAbi, Operation, ProcessId};
 use linera_sdk::{
     abi::WithContractAbi,
     linera_base_types::{
-        Amount, ApplicationPermissions, ChainOwnership, LurkMicrochainData, Owner, PostprocessData,
+        Amount, ApplicationPermissions, ChainOwnership, LurkMicrochainData, AccountOwner, PostprocessData,
         PreprocessData,
     },
     views::{RootView, View},
@@ -73,7 +73,7 @@ impl Contract for ConcurrentLurkContract {
 }
 
 impl ConcurrentLurkContract {
-    async fn execute_start(&mut self, owner: Owner, chain_state: DataBlobHash) {
+    async fn execute_start(&mut self, owner: AccountOwner, chain_state: DataBlobHash) {
         self.state.owner.set(Some(owner));
 
         self.runtime.assert_data_blob_exists(chain_state.clone());

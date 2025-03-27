@@ -5,7 +5,7 @@ use async_graphql::SimpleObject;
 use linera_sdk::{
     abi::{ContractAbi, ServiceAbi},
     graphql::GraphQLMutationRoot,
-    linera_base_types::{ChainId, MessageId, Owner},
+    linera_base_types::{ChainId, MessageId, AccountOwner},
     DataBlobHash,
 };
 use serde::{Deserialize, Serialize};
@@ -18,7 +18,7 @@ pub enum Operation {
         chain_proof: DataBlobHash,
     },
     Start {
-        owner: Owner,
+        owner: AccountOwner,
         chain_state: DataBlobHash,
     },
 }

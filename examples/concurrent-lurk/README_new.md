@@ -142,72 +142,20 @@ Because ping's last response was a non-blocking send, we resume it with no input
 !(defq ping3 !(microchain-transition port ping-chain-id app-id ping2))
 ```
 
-ping's new output:
+We can see that ping's new output is a blocking receive.
 
-
-Type each of these in the GraphiQL interface and substitute the env variables with their actual values that we've defined above.
-
-The `start` mutation starts a new game. We specify the two players using their new public keys,
-on the URL you get by running `echo "http://localhost:8080/chains/$CHAIN_1/applications/$APP_ID"`:
-
-```gql,uri=http://localhost:8080/chains/$CHAIN_1/applications/$APP_ID
-mutation {
-  start(
-    owner: \"$OWNER_1\"
-    chainState: \"$PING_GENESIS_ID\"
-  )
-}
-```
-
-It contains the temporary chain's ID, and the ID of the message that created it:
-
-```gql,uri=http://localhost:8080/chains/$CHAIN_1/applications/$APP_ID
-query {
-  ready {
-    messageId chainId
-  }
-}
-```
-
-Set the `QUERY_RESULT` variable to have the result returned by the previous query, and `HEX_CHAIN` and `MESSAGE_ID` will be properly set for you.
-Alternatively you can set the variables to the `chainId` and `messageId` values, respectively, returned by the previous query yourself.
-Using the message ID, we can assign the new chain to the key in each wallet:
+Next, pass ping the message that pong sent.
 
 ```bash
-kill %% && sleep 1    # Kill the service so we can use CLI commands for wallet 0.
-
-MESSAGE_ID="b7a85e90acb4badf7d04a239b2b6721bac885c3422cf3b93861695f1a5a33d9e040000000000000000000000"
-CHAIN_2="0db0ca3358f233ac25c3ecbcb1e9eaa86fa3f520fd1345155ec496973525ece2"
-
-linera -w1 assign --owner $OWNER_1 --message-id $MESSAGE_ID
-
-PONG_GENESIS_ID=$(linera -w1 publish-data-blob \
-  ~/.lurk/microchains/8c09b93fe69344a90562faeb7f144c63476f2c93301dee845c0e5342500949/genesis_state $CHAIN_2)
-
-TRANSITION_PONG_1=$(linera -w1 publish-data-blob \
-  ~/.lurk/microchains/8c09b93fe69344a90562faeb7f144c63476f2c93301dee845c0e5342500949/_1 $CHAIN_1)
-
-linera -w1 service --port 8080 &
-sleep 1
+!(defq ping4 !(microchain-transition port ping-chain-id app-id ping3 (car (cdr (cdr (car pong2))))))
 ```
 
-### Interacting with the Lurk microchain
+It emits a message confirming receipt, and returns a terminal continuation. Ping is done.
 
-Now the first player can make a move by navigating to the URL you get by running `echo "http://localhost:8080/chains/$CHAIN_2/applications/$APP_ID"`:
+Finally, resume pong after its send.
 
-```gql,uri=http://localhost:8080/chains/$CHAIN_2/applications/$APP_ID
-mutation {
-  start(
-    owner: \"$OWNER_1\"
-    chainState: \"$PONG_GENESIS_ID\"
-  )
-}
+```bash
+!(defq pong3 !(microchain-transition port pong-chain-id app-id pong2))
 ```
 
-And the second player player at the URL you get by running `echo "http://localhost:8081/chains/$MICROCHAIN/applications/$APP_ID"`:
-
-```gql,uri=http://localhost:8081/chains/$MICROCHAIN/applications/$APP_ID
-mutation { transition(
-  chainProof: "$TRANSITION_0"
-) }
-```
+You can check its output and see that it is still ready to receive another message.
