@@ -305,8 +305,8 @@ Using the message ID, we can assign the new chain to the key in each wallet:
 ```bash
 kill %% && sleep 1    # Kill the service so we can use CLI commands for wallet 0.
 
-MESSAGE_ID="b7a85e90acb4badf7d04a239b2b6721bac885c3422cf3b93861695f1a5a33d9e040000000000000000000000"
-CHAIN_2="0db0ca3358f233ac25c3ecbcb1e9eaa86fa3f520fd1345155ec496973525ece2"
+MESSAGE_ID="b7a85e90acb4badf7d04a239b2b6721bac885c3422cf3b93861695f1a5a33d9e050000000000000000000000"
+CHAIN_2="a98dd4332a0383d36bf0131c985c0cb8d45448bc91841bf0737b14d139b3f595"
 
 linera -w1 assign --owner $OWNER_1 --message-id $MESSAGE_ID
 

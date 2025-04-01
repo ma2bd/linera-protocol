@@ -28,3 +28,6 @@ node_modules
 
 # MacOS
 .DS_Store
+
+# Benchmarks
+examples/concurrent-lurk/run_e2e_*

@@ -42,7 +42,7 @@ Start the local Linera network and run a faucet:
 ```bash
 FAUCET_PORT=8079
 FAUCET_URL=http://localhost:$FAUCET_PORT
-linera net up --with-faucet --faucet-port $FAUCET_PORT &
+linera --send-timeout-ms 50000 --recv-timeout-ms 50000 net up --with-faucet --faucet-port $FAUCET_PORT &
 LINERA_TMP_DIR=$(mktemp -d)
 ```
 
@@ -55,7 +55,8 @@ export LINERA_STORAGE_1="rocksdb:$LINERA_TMP_DIR/client_1.db"
 linera --with-wallet 1 wallet init --faucet $FAUCET_URL
 
 INFO=($(linera --with-wallet 1 wallet request-chain --faucet $FAUCET_URL)) && echo $INFO
-export PING_CHAIN="${INFO[0]}"
+# export PING_CHAIN="${INFO[0]}"
+export PING_CHAIN="b7a85e90acb4badf7d04a239b2b6721bac885c3422cf3b93861695f1a5a33d9e"
 export OWNER=$(linera -w1 keygen)
 ```
 
@@ -78,6 +79,7 @@ Run the `lurk --linera --with-wallet 1` command, and type in the following comma
 !(def owner !(env-var "OWNER"))
 
 !(defq app-id !(linera-start ping-chain-id contract service))
+!(linera-service port)
 ```
 
 This publishes a Concurrent Lurk application on Linera in the background. There will be some errors, but you can ignore them (Linera over-prints them for some reason).

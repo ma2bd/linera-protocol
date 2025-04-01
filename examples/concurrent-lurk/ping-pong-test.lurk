@@ -1,0 +1,30 @@
+; !(load "examples/concurrent-lurk/ping-pong.lurk")
+!(load "ping-pong.lurk")
+
+!(def contract "examples/target/wasm32-unknown-unknown/release/concurrent_lurk_contract.wasm")
+!(def service "examples/target/wasm32-unknown-unknown/release/concurrent_lurk_service.wasm")
+
+!(def port !(env-var "PORT"))
+!(def ping-chain-id !(env-var "PING_CHAIN"))
+!(def owner !(env-var "OWNER"))
+
+!(defq app-id !(linera-start ping-chain-id contract service))
+!(linera-service port)
+
+!(def ping1 (ping ping-chain-id))
+!(microchain-start port ping-chain-id app-id owner ping1)
+
+!(def pong-chain-id !(env-var "PONG_CHAIN"))
+
+!(def pong1 (pong pong-chain-id))
+!(microchain-start port pong-chain-id app-id owner pong1)
+
+!(defq ping2 !(microchain-transition port ping-chain-id app-id ping1 pong-chain-id))
+
+!(defq pong2 !(microchain-transition port pong-chain-id app-id pong1 (car (cdr (cdr (car ping2))))))
+
+!(defq ping3 !(microchain-transition port ping-chain-id app-id ping2))
+
+!(defq ping4 !(microchain-transition port ping-chain-id app-id ping3 (car (cdr (cdr (car pong2))))))
+
+!(defq pong3 !(microchain-transition port pong-chain-id app-id pong2))

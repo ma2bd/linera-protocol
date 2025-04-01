@@ -132,12 +132,13 @@ impl ConcurrentLurkContract {
                 let (message_id, chain_id) =
                     self.runtime
                         .open_chain(ownership, permissions, Amount::ZERO);
-                self.runtime.send_message(chain_id, Message::Start);
-
+                
                 assert!(self.state.ready.get().is_none());
                 self.state
                     .ready
                     .set(Some(ProcessId::new(message_id, chain_id)));
+                
+                self.runtime.send_message(chain_id, Message::Start);
             }
             PostprocessData::Send { other_pid, message } => {
                 self.runtime
