@@ -502,7 +502,7 @@ where
         &mut self,
         latest_heights: Vec<(Target, BlockHeight)>,
     ) -> Result<(), WorkerError> {
-        let mut height_with_fully_delivered_messages = None;
+        let mut height_with_fully_delivered_messages = BlockHeight::ZERO;
 
         for (target, height) in latest_heights {
             let fully_delivered = self
@@ -515,16 +515,16 @@ where
                     .all_messages_to_tracked_chains_delivered_up_to(height)
                     .await?;
 
-            if fully_delivered && Some(height) > height_with_fully_delivered_messages {
-                height_with_fully_delivered_messages = Some(height);
+            if fully_delivered && height > height_with_fully_delivered_messages {
+                height_with_fully_delivered_messages = height;
             }
         }
 
         self.save().await?;
 
-        if let Some(height) = height_with_fully_delivered_messages {
-            self.state.delivery_notifier.notify(height);
-        }
+        self.state
+            .delivery_notifier
+            .notify(height_with_fully_delivered_messages);
 
         Ok(())
     }
