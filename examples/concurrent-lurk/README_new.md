@@ -9,7 +9,7 @@ Before you begin, make sure you have the `lurk` binary installed.
 In a separate directory of your choosing, do the following:
 
 ```bash
-git checkout git@github.com:lurk-lab/lurk.git && cd lurk
+git clone git@github.com:lurk-lab/lurk.git && cd lurk
 git checkout whz/on-linera
 cargo install --locked --path .
 ```
