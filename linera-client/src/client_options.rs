@@ -86,11 +86,11 @@ pub struct ClientOptions {
     pub with_wallet: Option<String>,
 
     /// Timeout for sending queries (milliseconds)
-    #[arg(long = "send-timeout-ms", default_value = "4000", value_parser = util::parse_millis)]
+    #[arg(long = "send-timeout-ms", default_value = "10000", value_parser = util::parse_millis)]
     pub send_timeout: Duration,
 
     /// Timeout for receiving responses (milliseconds)
-    #[arg(long = "recv-timeout-ms", default_value = "4000", value_parser = util::parse_millis)]
+    #[arg(long = "recv-timeout-ms", default_value = "10000", value_parser = util::parse_millis)]
     pub recv_timeout: Duration,
 
     /// The maximum number of incoming message bundles to include in a block proposal.
