@@ -54,9 +54,8 @@ export LINERA_STORAGE_1="rocksdb:$LINERA_TMP_DIR/client_1.db"
 
 linera --with-wallet 1 wallet init --faucet $FAUCET_URL
 
-INFO=($(linera --with-wallet 1 wallet request-chain --faucet $FAUCET_URL)) && echo $INFO
-# export PING_CHAIN="${INFO[0]}"
-export PING_CHAIN="b7a85e90acb4badf7d04a239b2b6721bac885c3422cf3b93861695f1a5a33d9e"
+INFO=($(linera --with-wallet 1 wallet request-chain --faucet $FAUCET_URL))
+export PING_CHAIN=$(echo $INFO | awk '{print $1}')
 export OWNER=$(linera -w1 keygen)
 ```
 

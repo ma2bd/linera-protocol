@@ -1,0 +1,17 @@
+{
+  "clients": [
+    {
+      "client_id": 1,
+      "lurk_load_time": {
+        "secs": 0,
+        "nanos": 0
+      },
+      "operations": {}
+    }
+  ],
+  "total_clients": 1,
+  "avg_lurk_load_time": {
+    "secs": 0,
+    "nanos": 0
+  }
+}

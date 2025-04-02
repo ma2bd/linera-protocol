@@ -57,11 +57,11 @@ impl Contract for ConcurrentLurkContract {
     async fn execute_message(&mut self, message: Message) {
         match message {
             Message::Start => {
-                log::trace!("Starting this application...");
+                log::info!("Starting this application...");
                 self.state.dummy.set(true);
             }
             Message::Message(message) => {
-                log::trace!("Handling message.");
+                log::info!("Handling message.");
                 self.state.message_queue.push_back(message)
             }
         }
@@ -76,32 +76,45 @@ impl ConcurrentLurkContract {
     async fn execute_start(&mut self, owner: AccountOwner, chain_state: DataBlobHash) {
         self.state.owner.set(Some(owner));
 
+        log::info!(">>> START assert_data_blob_exists");
         self.runtime.assert_data_blob_exists(chain_state.clone());
         let chain_state = self.runtime.read_data_blob(chain_state);
+        log::info!(">>> END assert_data_blob_exists");
 
+        log::info!(">>> START microchain_start");
         let new_data = self.runtime.microchain_start(chain_state);
         self.set_data(new_data);
+        log::info!(">>> END microchain_start");
 
+        log::info!(">>> START postprocess_microchain_transition");
         let postprocess_data = self
             .runtime
             .postprocess_microchain_transition(self.get_data());
         self.postprocess_microchain_transition(postprocess_data);
+        log::info!(">>> END postprocess_microchain_transition");
     }
 
     async fn execute_transition(&mut self, chain_proof: DataBlobHash) {
         let data = self.get_data();
+
+        log::info!(">>> START preprocess_microchain_transition");
         let preprocess_data = self
             .runtime
             .preprocess_microchain_transition(chain_proof, data.clone());
         self.preprocess_microchain_transition(preprocess_data).await;
+        log::info!(">>> END preprocess_microchain_transition");
 
+        log::info!(">>> START microchain_transition");
         let new_data = self.runtime.microchain_transition(chain_proof, data);
         self.set_data(new_data);
+        log::info!(">>> END microchain_transition");
 
+        log::info!(">>> START postprocess_microchain_transition");
         let postprocess_data = self
             .runtime
             .postprocess_microchain_transition(self.get_data());
         self.postprocess_microchain_transition(postprocess_data);
+        log::info!(">>> END postprocess_microchain_transition");
     }
 
     async fn preprocess_microchain_transition(&mut self, preprocess_data: PreprocessData) {

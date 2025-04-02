@@ -15,6 +15,8 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 mkdir "./examples/concurrent-lurk/run_e2e_${TIMESTAMP}"
 LOG_DIR="./examples/concurrent-lurk/run_e2e_${TIMESTAMP}"
 
+SERVER_LOG="$LOG_DIR/server.log"
+
 TIMING_LOG="$LOG_DIR/lurk_load_times.txt"
 echo "# Lurk Load Times (seconds)" > $TIMING_LOG
 echo "# Client_ID | Start_Time | End_Time | Duration" >> $TIMING_LOG
@@ -28,7 +30,7 @@ if ! nc -z localhost 8079 &>/dev/null; then
     echo "Starting Linera server with faucet..."
     FAUCET_PORT=8079
     FAUCET_URL=http://localhost:$FAUCET_PORT
-    linera --send-timeout-ms 50000 --recv-timeout-ms 50000 net up --with-faucet --faucet-port $FAUCET_PORT &
+    linera --send-timeout-ms 50000 --recv-timeout-ms 50000 net up --with-faucet --faucet-port $FAUCET_PORT > $SERVER_LOG 2>&1 &
     SERVER_PID=$!
     echo "Linera server started with PID: $SERVER_PID"
     
@@ -80,7 +82,7 @@ run_client() {
         # Time lurk loading - only part we care about timing
         echo "Starting lurk load for client $client_id..."
         START_TIME=$(date +%s.%N)
-        lurk load examples/concurrent-lurk/ping-pong-test.lurk --linera --with-wallet ${client_id}
+        RUST_BACKTRACE=1 LOG_DIR="$LOG_DIR" lurk load examples/concurrent-lurk/ping-pong-test.lurk --linera --with-wallet ${client_id}
         END_TIME=$(date +%s.%N)
         DURATION=$(echo "$END_TIME - $START_TIME" | bc)
         echo "$client_id | $START_TIME | $END_TIME | $DURATION" >> $TIMING_LOG
@@ -133,6 +135,8 @@ if [ -n "$TIMES" ]; then
     echo "Maximum time: $MAX seconds" >> $TIMING_LOG
     echo "Average time: $AVG seconds" >> $TIMING_LOG
 fi
+
+cargo run --bin parse_logs $LOG_DIR/server.log $LOG_DIR/server_benchmarks.md 0
 
 # Collect and display results
 echo ""

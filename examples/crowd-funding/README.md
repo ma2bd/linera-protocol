@@ -55,7 +55,8 @@ Start the local Linera network and run a faucet:
 ```bash
 FAUCET_PORT=8079
 FAUCET_URL=http://localhost:$FAUCET_PORT
-linera_spawn linera net up --with-faucet --faucet-port $FAUCET_PORT
+linera net up --with-faucet --faucet-port $FAUCET_PORT &
+LINERA_TMP_DIR=$(mktemp -d)
 
 # If you're using a testnet, run this instead:
 #   LINERA_TMP_DIR=$(mktemp -d)
@@ -75,10 +76,10 @@ linera --with-wallet 1 wallet init --faucet $FAUCET_URL
 
 INFO_0=($(linera --with-wallet 0 wallet request-chain --faucet $FAUCET_URL))
 INFO_1=($(linera --with-wallet 1 wallet request-chain --faucet $FAUCET_URL))
-CHAIN_0="${INFO_0[0]}"
-CHAIN_1="${INFO_1[0]}"
-OWNER_0="${INFO_0[3]}"
-OWNER_1="${INFO_1[3]}"
+CHAIN_0=$(echo $INFO_0 | awk '{print $1}')
+CHAIN_1=$(echo $INFO_1 | awk '{print $1}')
+OWNER_0=$(echo $INFO_0 | awk '{print $4}')
+OWNER_1=$(echo $INFO_1 | awk '{print $4}')
 ```
 
 Note that `linera --with-wallet 0` is equivalent to `linera --wallet "$LINERA_WALLET_0"
@@ -191,8 +192,8 @@ and run the following query:
 
 ```gql,uri=http://localhost:8080/chains/$CHAIN_0/applications/$APP_ID_1
 mutation { pledge(
-  owner:"$OWNER_0",
-  amount:"30."
+  owner: \"$OWNER_0\",
+  amount: \"30.\"
 ) }
 ```
 
@@ -210,13 +211,13 @@ open it and run the following query:
 ```gql,uri=http://localhost:8081/chains/$CHAIN_1/applications/$APP_ID_0
 mutation { claim(
   sourceAccount: {
-    owner: "$OWNER_1",
-    chainId: "$CHAIN_0"
+    owner: \"$OWNER_1\",
+    chainId: \"$CHAIN_0\"
   },
-  amount: "200.",
+  amount: \"200.\",
   targetAccount: {
-    owner: "$OWNER_1",
-    chainId: "$CHAIN_1"
+    owner: \"$OWNER_1\",
+    chainId: \"$CHAIN_1\"
   }
 ) }
 ```
@@ -225,7 +226,7 @@ You can check that the 200 tokens have arrived:
 
 ```gql,uri=http://localhost:8081/chains/$CHAIN_1/applications/$APP_ID_0
 query {
-  accounts { entry(key: "$OWNER_1") { value } }
+  accounts { entry(key: \"$OWNER_1\") { value } }
 }
 ```
 
@@ -235,8 +236,8 @@ and run:
 
 ```gql,uri=http://localhost:8081/chains/$CHAIN_1/applications/$APP_ID_1
 mutation { pledge(
-  owner:"$OWNER_1",
-  amount:"80."
+  owner: \"$OWNER_1\",
+  amount: \"80.\"
 ) }
 ```
 
@@ -254,6 +255,6 @@ then check that we have received 110 tokens, in addition to the
 
 ```gql,uri=http://localhost:8080/chains/$CHAIN_0/applications/$APP_ID_0
 query {
-  accounts { entry(key: "$OWNER_0") { value } }
+  accounts { entry(key: \"$OWNER_0\") { value } }
 }
 ```

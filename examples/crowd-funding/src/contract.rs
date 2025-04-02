@@ -51,6 +51,8 @@ impl Contract for CrowdFundingContract {
     }
 
     async fn execute_operation(&mut self, operation: Operation) -> Self::Response {
+        log::info!("execute_operation");
+
         match operation {
             Operation::Pledge { owner, amount } => {
                 if self.runtime.chain_id() == self.runtime.application_creator_chain_id() {
@@ -65,6 +67,8 @@ impl Contract for CrowdFundingContract {
     }
 
     async fn execute_message(&mut self, message: Message) {
+        log::info!("execute_message");
+
         match message {
             Message::PledgeWithAccount { owner, amount } => {
                 assert_eq!(
@@ -92,6 +96,8 @@ impl CrowdFundingContract {
 
     /// Adds a pledge from a local account to the remote campaign chain.
     fn execute_pledge_with_transfer(&mut self, owner: AccountOwner, amount: Amount) {
+        log::info!("execute_pledge_with_transfer");
+
         assert!(amount > Amount::ZERO, "Pledge is empty");
         // The campaign chain.
         let chain_id = self.runtime.application_creator_chain_id();
@@ -116,6 +122,8 @@ impl CrowdFundingContract {
 
     /// Adds a pledge from a local account to the campaign chain.
     async fn execute_pledge_with_account(&mut self, owner: AccountOwner, amount: Amount) {
+        log::info!("execute_pledge_with_account");
+
         assert!(amount > Amount::ZERO, "Pledge is empty");
         self.receive_from_account(owner, amount);
         self.finish_pledge(owner, amount).await
@@ -124,6 +132,8 @@ impl CrowdFundingContract {
     /// Marks a pledge in the application state, so that it can be returned if the campaign is
     /// cancelled.
     async fn finish_pledge(&mut self, source: AccountOwner, amount: Amount) {
+        log::info!("finish_pledge");
+        
         match self.state.status.get() {
             Status::Active => self
                 .state
@@ -139,6 +149,8 @@ impl CrowdFundingContract {
 
     /// Collects all pledges and completes the campaign if the target has been reached.
     fn collect_pledges(&mut self) {
+        log::info!("collect_pledges");
+
         let total = self.balance();
 
         match self.state.status.get() {
@@ -159,6 +171,8 @@ impl CrowdFundingContract {
 
     /// Cancels the campaign if the deadline has passed, refunding all pledges.
     async fn cancel_campaign(&mut self) {
+        log::info!("cancel_campaign");
+
         assert!(
             !self.state.status.get().is_complete(),
             "Crowd-funding campaign has already been completed"
@@ -192,6 +206,8 @@ impl CrowdFundingContract {
 
     /// Queries the token application to determine the total amount of tokens in custody.
     fn balance(&mut self) -> Amount {
+        log::info!("balance");
+
         let owner = self.runtime.application_id().into();
         let fungible_id = self.fungible_id();
         let response = self.runtime.call_application(
@@ -207,6 +223,8 @@ impl CrowdFundingContract {
 
     /// Transfers `amount` tokens from the funds in custody to the `owner`'s account.
     fn send_to(&mut self, amount: Amount, owner: AccountOwner) {
+        log::info!("send_to");
+
         let target_account = Account {
             chain_id: self.runtime.chain_id(),
             owner,
@@ -222,6 +240,8 @@ impl CrowdFundingContract {
 
     /// Calls into the Fungible Token application to receive tokens from the given account.
     fn receive_from_account(&mut self, owner: AccountOwner, amount: Amount) {
+        log::info!("receive_from_account");
+
         let target_account = Account {
             chain_id: self.runtime.chain_id(),
             owner: self.runtime.application_id().into(),
