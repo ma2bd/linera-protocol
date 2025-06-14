@@ -8,7 +8,7 @@ use exporter_service::ExporterContext;
 use futures::FutureExt;
 use linera_client::config::BlockExporterConfig;
 use linera_sdk::views::ViewError;
-use linera_service::storage::{CommonStorageOptions, StorageConfigNamespace};
+use linera_service::storage::{CommonStorageOptions, StorageConfig};
 
 #[allow(dead_code)]
 mod exporter_service;
@@ -42,7 +42,7 @@ struct ExporterOptions {
 
     /// Storage configuration for the blockchain history, chain states and binary blobs.
     #[arg(long = "storage")]
-    storage_config: StorageConfigNamespace,
+    storage_config: StorageConfig,
 
     /// Common storage options.
     #[command(flatten)]
