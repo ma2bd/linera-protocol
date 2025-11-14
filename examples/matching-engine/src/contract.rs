@@ -12,7 +12,7 @@ use linera_sdk::{
     Contract, ContractRuntime,
 };
 use matching_engine::{
-    MatchingEngineAbi, Message, Operation, Order, OrderNature, Parameters, Price,
+    MatchingEngineAbi, Message, Operation, Order, OrderId, OrderNature, Parameters, Price,
 };
 use state::{MatchingEngineState, ModifyQuantity, Transfer};
 
@@ -55,6 +55,9 @@ impl Contract for MatchingEngineContract {
     async fn execute_operation(&mut self, operation: Operation) -> Self::Response {
         match operation {
             Operation::ExecuteOrder { order } => {
+                self.runtime
+                    .application_parameters()
+                    .check_precision(&order);
                 let owner = order.owner();
                 let chain_id = self.runtime.chain_id();
                 self.runtime
@@ -185,7 +188,7 @@ impl MatchingEngineContract {
                 }
             }
             Order::Cancel { owner, order_id } => {
-                self.state.check_order_id(&order_id, &owner).await;
+                self.state.check_order_id(&order_id, owner).await;
                 let transfer = self
                     .state
                     .modify_order(order_id, ModifyQuantity::All)
@@ -198,7 +201,7 @@ impl MatchingEngineContract {
                 order_id,
                 reduce_quantity,
             } => {
-                self.state.check_order_id(&order_id, &owner).await;
+                self.state.check_order_id(&order_id, owner).await;
                 let transfer = self
                     .state
                     .modify_order(order_id, ModifyQuantity::Partial(reduce_quantity))
