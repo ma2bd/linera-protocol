@@ -121,10 +121,6 @@ impl CustomSerialize for PriceBid {
     }
 }
 
-pub fn product_price_amount(price: Price, count: Amount) -> Amount {
-    count.try_mul(price.price as u128).expect("product")
-}
-
 /// An identifier for a buy or sell order
 pub type OrderId = u64;
 
@@ -143,7 +139,7 @@ pub enum Order {
     /// Insertion of an order
     Insert {
         owner: AccountOwner,
-        amount: Amount,
+        quantity: Amount,
         nature: OrderNature,
         price: Price,
     },
@@ -156,11 +152,22 @@ pub enum Order {
     Modify {
         owner: AccountOwner,
         order_id: OrderId,
-        cancel_amount: Amount,
+        reduce_quantity: Amount,
     },
 }
 
 scalar!(Order);
+
+impl Order {
+    /// Get the owner from the order
+    pub fn owner(&self) -> AccountOwner {
+        match self {
+            Order::Insert { owner, .. } => *owner,
+            Order::Cancel { owner, .. } => *owner,
+            Order::Modify { owner, .. } => *owner,
+        }
+    }
+}
 
 /// When the matching engine is created we need to create to
 /// trade between two tokens 0 and 1. Those two tokens
@@ -172,6 +179,39 @@ pub struct Parameters {
 }
 
 scalar!(Parameters);
+
+impl Parameters {
+    pub fn product_price_amount(&self, price: Price, quantity: Amount) -> Amount {
+        quantity
+            .try_mul(price.price as u128)
+            .expect("overflow in pricing")
+    }
+
+    /// The application engine is trading between two tokens. Those tokens are the parameters of the
+    /// construction of the exchange and are accessed by index in the system.
+    pub fn fungible_id(&self, token_idx: u32) -> ApplicationId<FungibleTokenAbi> {
+        self.tokens[token_idx as usize]
+    }
+
+    /// Returns amount and type of tokens that need to be transferred to the matching engine when
+    /// an order is added:
+    /// * For an ask, just the token1 have to be put forward
+    /// * For a bid, the product of the price with the amount has to be put
+    pub fn get_amount_idx(
+        &self,
+        nature: &OrderNature,
+        price: &Price,
+        quantity: &Amount,
+    ) -> (Amount, u32) {
+        match nature {
+            OrderNature::Bid => {
+                let size0 = self.product_price_amount(*price, *quantity);
+                (size0, 0)
+            }
+            OrderNature::Ask => (*quantity, 1),
+        }
+    }
+}
 
 /// Operations that can be sent to the application.
 #[derive(Debug, Deserialize, Serialize, GraphQLMutationRoot)]

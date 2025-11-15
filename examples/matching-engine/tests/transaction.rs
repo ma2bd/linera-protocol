@@ -125,8 +125,9 @@ async fn single_transaction() {
     }
 
     // Creating the matching engine chain
-    let tokens = [token_id_a, token_id_b];
-    let matching_parameter = Parameters { tokens };
+    let matching_parameter = Parameters {
+        tokens: [token_id_a, token_id_b],
+    };
     let matching_id = matching_chain
         .create_application(
             module_id,
@@ -142,7 +143,7 @@ async fn single_transaction() {
         let price = Price { price };
         let order = Order::Insert {
             owner: owner_a,
-            amount: Amount::from_tokens(3),
+            quantity: Amount::from_tokens(3),
             nature: OrderNature::Bid,
             price,
         };
@@ -194,7 +195,7 @@ async fn single_transaction() {
         let price = Price { price };
         let order = Order::Insert {
             owner: owner_b,
-            amount: Amount::from_tokens(4),
+            quantity: Amount::from_tokens(4),
             nature: OrderNature::Ask,
             price,
         };
